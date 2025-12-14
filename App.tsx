@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { RequestForm } from './components/RequestForm';
 import { SupervisorDashboard } from './components/SupervisorDashboard';
 import { AdminDashboard } from './components/AdminDashboard';
@@ -10,15 +10,63 @@ type ViewState = 'form' | 'dashboard' | 'admin';
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<ViewState>('form');
-  const [requests, setRequests] = useState<MaterialRequest[]>([]);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  // Database State (Lifted from constants)
-  const [rigs, setRigs] = useState<Rig[]>(INITIAL_RIGS);
-  const [employees, setEmployees] = useState<Employee[]>(INITIAL_EMPLOYEES);
-  const [materials, setMaterials] = useState<Material[]>(INITIAL_MATERIALS);
-  const [admins, setAdmins] = useState<Admin[]>(INITIAL_ADMINS);
-  const [roles, setRoles] = useState<string[]>(INITIAL_ROLES);
+  // Database State with Persistence
+  const [rigs, setRigs] = useState<Rig[]>(() => {
+    const saved = localStorage.getItem('sondalog_rigs');
+    return saved ? JSON.parse(saved) : INITIAL_RIGS;
+  });
+
+  const [employees, setEmployees] = useState<Employee[]>(() => {
+    const saved = localStorage.getItem('sondalog_employees');
+    return saved ? JSON.parse(saved) : INITIAL_EMPLOYEES;
+  });
+
+  const [materials, setMaterials] = useState<Material[]>(() => {
+    const saved = localStorage.getItem('sondalog_materials');
+    return saved ? JSON.parse(saved) : INITIAL_MATERIALS;
+  });
+
+  const [admins, setAdmins] = useState<Admin[]>(() => {
+    const saved = localStorage.getItem('sondalog_admins');
+    return saved ? JSON.parse(saved) : INITIAL_ADMINS;
+  });
+
+  const [roles, setRoles] = useState<string[]>(() => {
+    const saved = localStorage.getItem('sondalog_roles');
+    return saved ? JSON.parse(saved) : INITIAL_ROLES;
+  });
+
+  const [requests, setRequests] = useState<MaterialRequest[]>(() => {
+    const saved = localStorage.getItem('sondalog_requests');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  // Persistence Effects
+  useEffect(() => {
+    localStorage.setItem('sondalog_rigs', JSON.stringify(rigs));
+  }, [rigs]);
+
+  useEffect(() => {
+    localStorage.setItem('sondalog_employees', JSON.stringify(employees));
+  }, [employees]);
+
+  useEffect(() => {
+    localStorage.setItem('sondalog_materials', JSON.stringify(materials));
+  }, [materials]);
+
+  useEffect(() => {
+    localStorage.setItem('sondalog_admins', JSON.stringify(admins));
+  }, [admins]);
+
+  useEffect(() => {
+    localStorage.setItem('sondalog_roles', JSON.stringify(roles));
+  }, [roles]);
+
+  useEffect(() => {
+    localStorage.setItem('sondalog_requests', JSON.stringify(requests));
+  }, [requests]);
 
   // Auth State
   const [authenticatedSupervisorId, setAuthenticatedSupervisorId] = useState<string | null>(null);
