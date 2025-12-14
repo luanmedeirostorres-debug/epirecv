@@ -386,7 +386,7 @@ const App: React.FC = () => {
               
               <p className="text-xs text-slate-400 mt-2 font-mono bg-slate-100 py-1 rounded">
                 {targetViewForLogin === 'admin' ? 
-                   <><strong>Master:</strong> admin / master123 <br/> <strong>Comum:</strong> almoxarife / user123</> : 
+                   <>Acesso restrito a administradores autorizados.</> : 
                    <>Senha pessoal (padrão inicial: <strong>prrecv</strong>)</>
                 }
               </p>

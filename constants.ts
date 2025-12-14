@@ -17,7 +17,7 @@ export const EMPLOYEES: Employee[] = [
 ];
 
 export const ADMINS: Admin[] = [
-  { id: 'admin', name: 'Administrador Geral', role: 'MASTER', password: 'master123' },
+  { id: 'luantorres', name: 'Luan Torres', role: 'MASTER', password: '1905' },
   { id: 'almoxarife', name: 'Almoxarife Local', role: 'COMMON', password: 'user123' },
 ];
 
