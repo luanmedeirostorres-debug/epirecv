@@ -1,0 +1,5 @@
+{
+  "name": "EPI-RECV",
+  "description": "Aplicativo para solicitação EPI para as sondas, com fluxo de aprovação de supervisor e busca inteligente de itens.",
+  "requestFramePermissions": []
+}
