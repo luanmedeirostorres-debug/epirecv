@@ -6,6 +6,15 @@ export const RIGS: Rig[] = [
   { id: 'S03', name: 'Sonda Gamma 03', location: 'Onshore - Bahia' },
 ];
 
+export const INITIAL_ROLES: string[] = [
+  'Plataformista', 
+  'Torrista', 
+  'Sondador', 
+  'Mecânico', 
+  'Eletricista', 
+  'Gerente'
+];
+
 export const EMPLOYEES: Employee[] = [
   { id: 'MAT001', name: 'Carlos Silva', role: 'Torrista' },
   { id: 'MAT002', name: 'Ana Oliveira', role: 'Plataformista' },

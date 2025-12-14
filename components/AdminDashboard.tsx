@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Material, Employee, Rig, Admin } from '../types';
-import { Database, UserPlus, HardHat, PackagePlus, Save, UserCog, Shield, AlertTriangle, Settings, Pencil, Trash2, X } from 'lucide-react';
+import { Database, UserPlus, HardHat, PackagePlus, Save, UserCog, Shield, AlertTriangle, Settings, Pencil, Trash2, X, Plus, Briefcase } from 'lucide-react';
 
 interface AdminDashboardProps {
   currentAdmin: Admin;
@@ -9,6 +9,7 @@ interface AdminDashboardProps {
   employees: Employee[];
   rigs: Rig[];
   admins: Admin[];
+  roles: string[];
   // Handlers
   onAddMaterial: (material: Material) => void;
   onUpdateMaterial: (oldSku: string, updatedMaterial: Material) => void;
@@ -25,26 +26,33 @@ interface AdminDashboardProps {
   onAddAdmin: (admin: Admin) => void;
   onUpdateAdmin: (originalId: string, updatedAdmin: Admin) => boolean;
   onDeleteAdmin: (id: string) => void;
+
+  onAddRole: (role: string) => void;
+  onDeleteRole: (role: string) => void;
 }
 
-type Tab = 'materials' | 'employees' | 'supervisors' | 'rigs' | 'admins' | 'settings';
+type Tab = 'materials' | 'employees' | 'supervisors' | 'rigs' | 'admins' | 'settings' | 'roles';
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ 
     currentAdmin, 
-    materials, employees, rigs, admins,
+    materials, employees, rigs, admins, roles,
     onAddMaterial, onUpdateMaterial, onDeleteMaterial,
     onAddEmployee, onUpdateEmployee, onDeleteEmployee,
     onAddRig, onUpdateRig, onDeleteRig,
-    onAddAdmin, onUpdateAdmin, onDeleteAdmin
+    onAddAdmin, onUpdateAdmin, onDeleteAdmin,
+    onAddRole, onDeleteRole
 }) => {
   const [activeTab, setActiveTab] = useState<Tab>('materials');
 
   // Form States
   const [materialForm, setMaterialForm] = useState<Material>({ sku: '', description: '', unit: 'UN', category: 'Geral' });
-  const [employeeForm, setEmployeeForm] = useState<Employee>({ id: '', name: '', role: 'Plataformista' });
+  const [employeeForm, setEmployeeForm] = useState<Employee>({ id: '', name: '', role: roles[0] || 'Plataformista' });
   const [supervisorForm, setSupervisorForm] = useState<Employee>({ id: '', name: '', role: 'Supervisor' });
   const [rigForm, setRigForm] = useState<Rig>({ id: '', name: '', location: '' });
   const [adminForm, setAdminForm] = useState<Admin>({ id: '', name: '', role: 'COMMON', password: '' });
+  
+  // Role Management State
+  const [newRole, setNewRole] = useState('');
 
   // Editing State (Track which ID is being edited to switch form mode)
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -63,10 +71,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   useEffect(() => {
     setEditingId(null);
     setMaterialForm({ sku: '', description: '', unit: 'UN', category: 'Geral' });
-    setEmployeeForm({ id: '', name: '', role: 'Plataformista' });
+    setEmployeeForm({ id: '', name: '', role: roles[0] || 'Plataformista' });
     setSupervisorForm({ id: '', name: '', role: 'Supervisor' });
     setRigForm({ id: '', name: '', location: '' });
     setAdminForm({ id: '', name: '', role: 'COMMON', password: '' });
+    setNewRole('');
   }, [activeTab]);
 
   const isMaster = currentAdmin.role === 'MASTER';
@@ -113,7 +122,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         onAddEmployee(employeeForm);
         alert('Colaborador adicionado com sucesso!');
       }
-      setEmployeeForm({ id: '', name: '', role: 'Plataformista' });
+      setEmployeeForm({ id: '', name: '', role: roles[0] || 'Plataformista' });
     }
   };
 
@@ -127,7 +136,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     if (editingId && confirm(`Tem certeza que deseja excluir o colaborador ${editingId}?`)) {
       onDeleteEmployee(editingId);
       setEditingId(null);
-      setEmployeeForm({ id: '', name: '', role: 'Plataformista' });
+      setEmployeeForm({ id: '', name: '', role: roles[0] || 'Plataformista' });
     }
   };
 
@@ -245,6 +254,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     }
   };
 
+  // --- ROLE HANDLERS ---
+  const handleAddRoleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newRole && !roles.includes(newRole)) {
+        onAddRole(newRole);
+        setNewRole('');
+    } else if (roles.includes(newRole)) {
+        alert('Este cargo já existe.');
+    }
+  };
+
   // --- SELF UPDATE ---
   const handleSelfUpdateSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -324,6 +344,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               }`}
             >
               <HardHat className="w-4 h-4" /> Sondas
+            </button>
+            <button
+              onClick={() => setActiveTab('roles')}
+              className={`px-4 py-2 text-sm font-medium rounded-t-lg flex items-center gap-2 transition-colors ${
+                activeTab === 'roles' 
+                  ? 'bg-white border border-b-0 border-slate-200 text-blue-600' 
+                  : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'
+              }`}
+            >
+              <Briefcase className="w-4 h-4" /> Cargos
             </button>
             <button
               onClick={() => setActiveTab('admins')}
@@ -502,12 +532,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     value={employeeForm.role}
                     onChange={e => setEmployeeForm({...employeeForm, role: e.target.value})}
                   >
-                    <option value="Plataformista">Plataformista</option>
-                    <option value="Torrista">Torrista</option>
-                    <option value="Sondador">Sondador</option>
-                    <option value="Mecânico">Mecânico</option>
-                    <option value="Eletricista">Eletricista</option>
-                    <option value="Gerente">Gerente</option>
+                    {roles.map(role => (
+                        <option key={role} value={role}>{role}</option>
+                    ))}
                   </select>
                 </div>
                 <div className="md:col-span-2">
@@ -676,6 +703,58 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 </div>
             </div>
           </>
+        )}
+
+        {/* Roles Tab - MASTER ONLY */}
+        {activeTab === 'roles' && isMaster && (
+            <>
+                <div className="space-y-4 mb-8">
+                    <h3 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
+                        <Briefcase className="w-5 h-5 text-slate-500" />
+                        Gerenciar Cargos
+                    </h3>
+                    <p className="text-sm text-slate-600">
+                        Adicione novos cargos que estarão disponíveis ao cadastrar colaboradores.
+                    </p>
+                    <form onSubmit={handleAddRoleSubmit} className="flex gap-4 items-end">
+                        <div className="flex-1">
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Nome do Novo Cargo</label>
+                            <input
+                                required
+                                type="text"
+                                placeholder="Ex: Engenheiro de Segurança"
+                                className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 outline-none"
+                                value={newRole}
+                                onChange={e => setNewRole(e.target.value)}
+                            />
+                        </div>
+                        <button 
+                            type="submit" 
+                            className="flex items-center gap-2 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md font-medium transition-colors"
+                        >
+                            <Plus className="w-4 h-4" /> Adicionar
+                        </button>
+                    </form>
+                </div>
+
+                <div className="border-t border-slate-100 pt-6">
+                    <h4 className="font-medium text-slate-700 mb-4">Cargos Disponíveis</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {roles.map(role => (
+                            <div key={role} className="flex items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded-md">
+                                <span className="text-slate-700 font-medium">{role}</span>
+                                <button 
+                                    onClick={() => { if(confirm(`Excluir o cargo "${role}"?`)) onDeleteRole(role) }}
+                                    className="text-slate-400 hover:text-red-600 transition-colors p-1"
+                                    title="Excluir Cargo"
+                                >
+                                    <Trash2 className="w-4 h-4" />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </>
         )}
 
         {/* Rigs Form - MASTER ONLY */}

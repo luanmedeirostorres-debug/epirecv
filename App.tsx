@@ -4,7 +4,7 @@ import { SupervisorDashboard } from './components/SupervisorDashboard';
 import { AdminDashboard } from './components/AdminDashboard';
 import { MaterialRequest, RequestItem, RequestStatus, Material, Employee, Rig, Admin } from './types';
 import { LayoutDashboard, FileText, Drill, Menu, X, Lock, KeyRound, ShieldCheck, LogOut } from 'lucide-react';
-import { RIGS as INITIAL_RIGS, EMPLOYEES as INITIAL_EMPLOYEES, MATERIALS as INITIAL_MATERIALS, ADMINS as INITIAL_ADMINS } from './constants';
+import { RIGS as INITIAL_RIGS, EMPLOYEES as INITIAL_EMPLOYEES, MATERIALS as INITIAL_MATERIALS, ADMINS as INITIAL_ADMINS, INITIAL_ROLES } from './constants';
 
 type ViewState = 'form' | 'dashboard' | 'admin';
 
@@ -18,6 +18,7 @@ const App: React.FC = () => {
   const [employees, setEmployees] = useState<Employee[]>(INITIAL_EMPLOYEES);
   const [materials, setMaterials] = useState<Material[]>(INITIAL_MATERIALS);
   const [admins, setAdmins] = useState<Admin[]>(INITIAL_ADMINS);
+  const [roles, setRoles] = useState<string[]>(INITIAL_ROLES);
 
   // Auth State
   const [authenticatedSupervisorId, setAuthenticatedSupervisorId] = useState<string | null>(null);
@@ -32,6 +33,16 @@ const App: React.FC = () => {
   const [loginError, setLoginError] = useState(false);
 
   // --- Database Management Functions (CRUD) ---
+
+  // Roles
+  const handleAddRole = (role: string) => {
+    if (!roles.includes(role)) {
+      setRoles([...roles, role]);
+    }
+  };
+  const handleDeleteRole = (role: string) => {
+    setRoles(roles.filter(r => r !== role));
+  };
 
   // Materials
   const handleAddMaterial = (material: Material) => {
@@ -398,6 +409,7 @@ const App: React.FC = () => {
               employees={employees}
               rigs={rigs}
               admins={admins}
+              roles={roles}
               onAddMaterial={handleAddMaterial}
               onUpdateMaterial={handleUpdateMaterial}
               onDeleteMaterial={handleDeleteMaterial}
@@ -410,6 +422,8 @@ const App: React.FC = () => {
               onAddAdmin={handleAddAdmin}
               onUpdateAdmin={handleUpdateAdmin}
               onDeleteAdmin={handleDeleteAdmin}
+              onAddRole={handleAddRole}
+              onDeleteRole={handleDeleteRole}
             />
           </div>
         )}
