@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { Material, Employee, Rig, Admin } from '../types';
-import { Database, UserPlus, HardHat, PackagePlus, Save, UserCog, Shield, AlertTriangle, Settings, Pencil, Trash2, X, Plus, Briefcase } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Material, Employee, Rig, Admin, MaterialRequest } from '../types';
+import { Database, UserPlus, HardHat, PackagePlus, Save, UserCog, Shield, AlertTriangle, Settings, Pencil, Trash2, X, Plus, Briefcase, Download, Upload } from 'lucide-react';
 
 interface AdminDashboardProps {
   currentAdmin: Admin;
@@ -10,6 +10,8 @@ interface AdminDashboardProps {
   rigs: Rig[];
   admins: Admin[];
   roles: string[];
+  requests?: MaterialRequest[]; // Optional just in case, but passed from App
+  
   // Handlers
   onAddMaterial: (material: Material) => void;
   onUpdateMaterial: (oldSku: string, updatedMaterial: Material) => void;
@@ -29,18 +31,21 @@ interface AdminDashboardProps {
 
   onAddRole: (role: string) => void;
   onDeleteRole: (role: string) => void;
+
+  onImportDatabase: (data: any) => void;
 }
 
-type Tab = 'materials' | 'employees' | 'supervisors' | 'rigs' | 'admins' | 'settings' | 'roles';
+type Tab = 'materials' | 'employees' | 'supervisors' | 'rigs' | 'admins' | 'settings' | 'roles' | 'backup';
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ 
     currentAdmin, 
-    materials, employees, rigs, admins, roles,
+    materials, employees, rigs, admins, roles, requests,
     onAddMaterial, onUpdateMaterial, onDeleteMaterial,
     onAddEmployee, onUpdateEmployee, onDeleteEmployee,
     onAddRig, onUpdateRig, onDeleteRig,
     onAddAdmin, onUpdateAdmin, onDeleteAdmin,
-    onAddRole, onDeleteRole
+    onAddRole, onDeleteRole,
+    onImportDatabase
 }) => {
   const [activeTab, setActiveTab] = useState<Tab>('materials');
 
@@ -57,6 +62,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   // Editing State (Track which ID is being edited to switch form mode)
   const [editingId, setEditingId] = useState<string | null>(null);
   const [capsLockOn, setCapsLockOn] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Self Update State
   const [selfForm, setSelfForm] = useState<Admin>({ ...currentAdmin, password: '' }); // Don't prefill password
@@ -267,6 +273,57 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     }
   };
 
+  // --- BACKUP HANDLERS ---
+  const handleExportBackup = () => {
+    const backupData = {
+        materials,
+        employees,
+        rigs,
+        admins,
+        roles,
+        requests: requests || [],
+        exportDate: new Date().toISOString()
+    };
+    
+    const jsonString = JSON.stringify(backupData, null, 2);
+    const blob = new Blob([jsonString], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `sondalog_backup_${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+        try {
+            const json = JSON.parse(event.target?.result as string);
+            // Basic validation
+            if (!json.materials || !json.employees) {
+                throw new Error("Formato de arquivo inválido.");
+            }
+            if (confirm("ATENÇÃO: Isso irá substituir TODOS os dados atuais pelos dados do backup. Deseja continuar?")) {
+                onImportDatabase(json);
+            }
+        } catch (err) {
+            alert("Erro ao ler arquivo de backup: " + err);
+        }
+    };
+    reader.readAsText(file);
+    // Reset input
+    e.target.value = '';
+  };
+
   // --- SELF UPDATE ---
   const handleSelfUpdateSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -366,6 +423,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               }`}
             >
               <Shield className="w-4 h-4" /> Administradores
+            </button>
+            <button
+              onClick={() => setActiveTab('backup')}
+              className={`px-4 py-2 text-sm font-medium rounded-t-lg flex items-center gap-2 transition-colors ${
+                activeTab === 'backup' 
+                  ? 'bg-white border border-b-0 border-slate-200 text-blue-600' 
+                  : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'
+              }`}
+            >
+              <Database className="w-4 h-4" /> Backup
             </button>
           </>
         )}
@@ -989,6 +1056,74 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 </div>
             </div>
           </>
+        )}
+
+        {/* BACKUP TAB - MASTER ONLY */}
+        {activeTab === 'backup' && isMaster && (
+            <div className="space-y-6 animate-in fade-in duration-300">
+                <div>
+                    <h3 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
+                        <Database className="w-5 h-5 text-slate-500" />
+                        Backup e Restauração de Dados
+                    </h3>
+                    <p className="text-sm text-slate-600 mt-1">
+                        Exporte todos os dados do sistema para um arquivo JSON seguro ou restaure dados de um backup anterior.
+                    </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* EXPORT SECTION */}
+                    <div className="bg-slate-50 border border-slate-200 rounded-lg p-6 flex flex-col items-center text-center">
+                        <div className="p-3 bg-blue-100 rounded-full mb-4">
+                            <Download className="w-8 h-8 text-blue-600" />
+                        </div>
+                        <h4 className="font-semibold text-slate-800 mb-2">Exportar Dados</h4>
+                        <p className="text-sm text-slate-500 mb-6">
+                            Gera um arquivo contendo todos os Materiais, Colaboradores, Sondas, Administradores e Solicitações atuais.
+                        </p>
+                        <button 
+                            onClick={handleExportBackup}
+                            className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md font-medium transition-colors flex items-center gap-2"
+                        >
+                            <Download className="w-4 h-4" /> Baixar Backup (JSON)
+                        </button>
+                    </div>
+
+                    {/* IMPORT SECTION */}
+                    <div className="bg-slate-50 border border-slate-200 rounded-lg p-6 flex flex-col items-center text-center">
+                        <div className="p-3 bg-green-100 rounded-full mb-4">
+                            <Upload className="w-8 h-8 text-green-600" />
+                        </div>
+                        <h4 className="font-semibold text-slate-800 mb-2">Restaurar Dados</h4>
+                        <p className="text-sm text-slate-500 mb-6">
+                            Carregue um arquivo de backup (.json) para restaurar o banco de dados. <br/>
+                            <span className="text-red-500 font-bold">ATENÇÃO: Isso substituirá os dados atuais.</span>
+                        </p>
+                        
+                        <input 
+                            type="file" 
+                            accept=".json" 
+                            ref={fileInputRef}
+                            style={{ display: 'none' }}
+                            onChange={handleFileChange}
+                        />
+
+                        <button 
+                            onClick={handleImportClick}
+                            className="px-6 py-2 bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 rounded-md font-medium transition-colors flex items-center gap-2"
+                        >
+                            <Upload className="w-4 h-4" /> Selecionar Arquivo
+                        </button>
+                    </div>
+                </div>
+
+                <div className="bg-amber-50 border border-amber-100 rounded-md p-4 text-sm text-amber-800 flex items-start gap-2">
+                    <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                    <div>
+                        <b>Nota Importante:</b> Como este sistema roda localmente no seu navegador, fazer backups regulares é a única forma de garantir que seus dados persistam caso você limpe o cache do navegador ou mude de dispositivo.
+                    </div>
+                </div>
+            </div>
         )}
 
         {/* My Settings Form - FOR ALL ADMINS */}

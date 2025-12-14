@@ -83,6 +83,17 @@ const App: React.FC = () => {
 
   // --- Database Management Functions (CRUD) ---
 
+  // Import Function
+  const handleImportDatabase = (data: any) => {
+    if (data.materials) setMaterials(data.materials);
+    if (data.employees) setEmployees(data.employees);
+    if (data.rigs) setRigs(data.rigs);
+    if (data.admins) setAdmins(data.admins);
+    if (data.roles) setRoles(data.roles);
+    if (data.requests) setRequests(data.requests);
+    alert('Banco de dados restaurado com sucesso!');
+  };
+
   // Roles
   const handleAddRole = (role: string) => {
     if (!roles.includes(role)) {
@@ -460,6 +471,7 @@ const App: React.FC = () => {
               rigs={rigs}
               admins={admins}
               roles={roles}
+              requests={requests} // Pass requests for backup
               onAddMaterial={handleAddMaterial}
               onUpdateMaterial={handleUpdateMaterial}
               onDeleteMaterial={handleDeleteMaterial}
@@ -474,6 +486,7 @@ const App: React.FC = () => {
               onDeleteAdmin={handleDeleteAdmin}
               onAddRole={handleAddRole}
               onDeleteRole={handleDeleteRole}
+              onImportDatabase={handleImportDatabase} // Pass import handler
             />
           </div>
         )}
