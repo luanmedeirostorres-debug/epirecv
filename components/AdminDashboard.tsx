@@ -56,6 +56,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   // Editing State (Track which ID is being edited to switch form mode)
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [capsLockOn, setCapsLockOn] = useState(false);
 
   // Self Update State
   const [selfForm, setSelfForm] = useState<Admin>({ ...currentAdmin, password: '' }); // Don't prefill password
@@ -76,6 +77,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     setRigForm({ id: '', name: '', location: '' });
     setAdminForm({ id: '', name: '', role: 'COMMON', password: '' });
     setNewRole('');
+    setCapsLockOn(false);
   }, [activeTab]);
 
   const isMaster = currentAdmin.role === 'MASTER';
@@ -918,7 +920,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 outline-none"
                     value={adminForm.password}
                     onChange={e => setAdminForm({...adminForm, password: e.target.value})}
+                    onKeyDown={(e) => setCapsLockOn(e.getModifierState('CapsLock'))}
                   />
+                  {capsLockOn && activeTab === 'admins' && (
+                    <p className="text-xs text-amber-600 mt-1 font-medium flex items-center gap-1">
+                        <AlertTriangle className="w-3 h-3" /> Caps Lock ativado
+                    </p>
+                  )}
                 </div>
               </div>
               <div className="pt-2 flex gap-3">
@@ -1022,6 +1030,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 outline-none"
                   value={selfForm.password || ''}
                   onChange={e => setSelfForm({...selfForm, password: e.target.value})}
+                  onKeyDown={(e) => setCapsLockOn(e.getModifierState('CapsLock'))}
                 />
               </div>
               <div>
@@ -1032,9 +1041,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 outline-none"
                   value={confirmSelfPass}
                   onChange={e => setConfirmSelfPass(e.target.value)}
+                  onKeyDown={(e) => setCapsLockOn(e.getModifierState('CapsLock'))}
                   disabled={!selfForm.password}
                 />
               </div>
+              
+              {capsLockOn && activeTab === 'settings' && (
+                  <div className="md:col-span-2">
+                    <p className="text-xs text-amber-600 font-medium flex items-center gap-1">
+                        <AlertTriangle className="w-3 h-3" /> Caps Lock ativado
+                    </p>
+                  </div>
+              )}
             </div>
             <div className="pt-4">
               <button type="submit" className="flex items-center gap-2 px-6 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-md font-medium transition-colors">

@@ -3,7 +3,7 @@ import { RequestForm } from './components/RequestForm';
 import { SupervisorDashboard } from './components/SupervisorDashboard';
 import { AdminDashboard } from './components/AdminDashboard';
 import { MaterialRequest, RequestItem, RequestStatus, Material, Employee, Rig, Admin } from './types';
-import { LayoutDashboard, FileText, Drill, Menu, X, Lock, KeyRound, ShieldCheck, LogOut } from 'lucide-react';
+import { LayoutDashboard, FileText, Drill, Menu, X, Lock, KeyRound, ShieldCheck, LogOut, AlertTriangle } from 'lucide-react';
 import { RIGS as INITIAL_RIGS, EMPLOYEES as INITIAL_EMPLOYEES, MATERIALS as INITIAL_MATERIALS, ADMINS as INITIAL_ADMINS, INITIAL_ROLES } from './constants';
 
 type ViewState = 'form' | 'dashboard' | 'admin';
@@ -31,6 +31,7 @@ const App: React.FC = () => {
   const [loginUser, setLoginUser] = useState(''); // Used for Supervisor (Select) AND Admin (Input)
   const [passwordInput, setPasswordInput] = useState('');
   const [loginError, setLoginError] = useState(false);
+  const [capsLockOn, setCapsLockOn] = useState(false);
 
   // --- Database Management Functions (CRUD) ---
 
@@ -148,6 +149,7 @@ const App: React.FC = () => {
 
   // Navigation & Auth Handling
   const handleProtectedNavigation = (target: ViewState) => {
+    setCapsLockOn(false);
     if (target === 'dashboard') {
       if (authenticatedSupervisorId) {
         setCurrentView('dashboard');
@@ -506,7 +508,13 @@ const App: React.FC = () => {
                     setPasswordInput(e.target.value);
                     setLoginError(false);
                   }}
+                  onKeyDown={(e) => setCapsLockOn(e.getModifierState('CapsLock'))}
                 />
+                {capsLockOn && (
+                    <p className="text-xs text-amber-600 mt-1 font-medium flex items-center gap-1">
+                        <AlertTriangle className="w-3 h-3" /> Caps Lock ativado
+                    </p>
+                )}
                 {loginError && (
                   <p className="text-xs text-red-500 mt-1 font-medium ml-1">
                       {targetViewForLogin === 'dashboard' ? 'Usuário ou senha incorretos.' : 'Credenciais inválidas.'}

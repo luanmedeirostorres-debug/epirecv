@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { MaterialRequest, RequestStatus, Rig, Employee } from '../types';
-import { CheckCircle2, XCircle, Clock, AlertCircle, FileSpreadsheet, Inbox, Settings, X, Lock } from 'lucide-react';
+import { CheckCircle2, XCircle, Clock, AlertCircle, FileSpreadsheet, Inbox, Settings, X, Lock, AlertTriangle } from 'lucide-react';
 
 interface SupervisorDashboardProps {
   requests: MaterialRequest[];
@@ -15,6 +15,7 @@ export const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({ reques
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordError, setPasswordError] = useState('');
+  const [capsLockOn, setCapsLockOn] = useState(false);
   
   // Selection State for Export
   const [selectedRequestIds, setSelectedRequestIds] = useState<Set<string>>(new Set());
@@ -121,7 +122,10 @@ export const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({ reques
       {/* Top Controls */}
       <div className="flex justify-end gap-2">
          <button
-            onClick={() => setIsPasswordModalOpen(true)}
+            onClick={() => {
+                setIsPasswordModalOpen(true);
+                setCapsLockOn(false);
+            }}
             className="flex items-center gap-2 px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-sm font-medium shadow-sm transition-colors active:scale-95 transform"
           >
             <Settings className="w-4 h-4" />
@@ -310,6 +314,7 @@ export const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({ reques
                     setNewPassword(e.target.value);
                     setPasswordError('');
                   }}
+                  onKeyDown={(e) => setCapsLockOn(e.getModifierState('CapsLock'))}
                   placeholder="Nova senha..."
                 />
               </div>
@@ -323,9 +328,16 @@ export const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({ reques
                     setConfirmPassword(e.target.value);
                     setPasswordError('');
                   }}
+                  onKeyDown={(e) => setCapsLockOn(e.getModifierState('CapsLock'))}
                   placeholder="Confirme a senha..."
                 />
               </div>
+              
+              {capsLockOn && (
+                  <p className="text-xs text-amber-600 font-medium flex items-center gap-1 ml-1">
+                      <AlertTriangle className="w-3 h-3" /> Caps Lock ativado
+                  </p>
+              )}
 
               {passwordError && (
                 <p className="text-xs text-red-500 font-medium ml-1">{passwordError}</p>
