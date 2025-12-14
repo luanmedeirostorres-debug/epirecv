@@ -194,6 +194,10 @@ const App: React.FC = () => {
     ));
   };
 
+  const handleDeleteRequest = (id: string) => {
+    setRequests(requests.filter(req => req.id !== id));
+  };
+
   // Logic to update the specific supervisor's password
   const handleSupervisorPasswordChange = (newPassword: string) => {
     if (!authenticatedSupervisorId) return;
@@ -207,9 +211,25 @@ const App: React.FC = () => {
   };
 
   // Navigation & Auth Handling
+
+  // Handles navigation to the public "Nova Solicitação" area
+  // Automatically logs out any active sessions to ensure clean state
+  const handlePublicNavigation = () => {
+    setAuthenticatedSupervisorId(null);
+    setCurrentAdmin(null);
+    setCurrentView('form');
+    setIsMobileMenuOpen(false);
+  };
+
+  // Handles navigation to protected areas (Dashboard or Admin)
+  // Automatically logs out from the *other* restricted area to prevent cross-contamination
   const handleProtectedNavigation = (target: ViewState) => {
     setCapsLockOn(false);
+    
     if (target === 'dashboard') {
+      // Switching to Supervisor Dashboard: Logout Admin if active
+      if (currentAdmin) setCurrentAdmin(null);
+
       if (authenticatedSupervisorId) {
         setCurrentView('dashboard');
       } else {
@@ -220,6 +240,9 @@ const App: React.FC = () => {
         setPasswordInput('');
       }
     } else if (target === 'admin') {
+      // Switching to Admin Panel: Logout Supervisor if active
+      if (authenticatedSupervisorId) setAuthenticatedSupervisorId(null);
+
       if (currentAdmin) {
         setCurrentView('admin');
       } else {
@@ -234,13 +257,9 @@ const App: React.FC = () => {
   };
 
   const handleLogout = () => {
-    if (currentView === 'dashboard') {
-      setAuthenticatedSupervisorId(null);
-      setCurrentView('form');
-    } else if (currentView === 'admin') {
-      setCurrentAdmin(null);
-      setCurrentView('form');
-    }
+    setAuthenticatedSupervisorId(null);
+    setCurrentAdmin(null);
+    setCurrentView('form');
   };
 
   const handleLoginSubmit = (e: React.FormEvent) => {
@@ -297,7 +316,7 @@ const App: React.FC = () => {
             {/* Desktop Menu */}
             <div className="hidden md:flex items-center space-x-4">
               <button
-                onClick={() => setCurrentView('form')}
+                onClick={handlePublicNavigation}
                 className={`px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2 ${
                   currentView === 'form' 
                     ? 'bg-slate-800 text-white shadow-inner' 
@@ -366,7 +385,7 @@ const App: React.FC = () => {
           <div className="md:hidden bg-slate-800 border-t border-slate-700">
             <div className="px-2 pt-2 pb-3 space-y-1">
               <button
-                onClick={() => { setCurrentView('form'); setIsMobileMenuOpen(false); }}
+                onClick={handlePublicNavigation}
                 className={`block w-full text-left px-3 py-2 rounded-md text-base font-medium ${
                   currentView === 'form' ? 'bg-slate-900 text-white' : 'text-slate-300 hover:bg-slate-700 hover:text-white'
                 }`}
@@ -440,7 +459,8 @@ const App: React.FC = () => {
             </div>
             <SupervisorDashboard 
               requests={requests.filter(req => req.supervisorId === authenticatedSupervisorId)} 
-              onUpdateStatus={handleUpdateStatus} 
+              onUpdateStatus={handleUpdateStatus}
+              onDeleteRequest={handleDeleteRequest}
               rigs={rigs} 
               employees={employees} 
               onChangePassword={handleSupervisorPasswordChange}

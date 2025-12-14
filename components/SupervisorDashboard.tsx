@@ -1,22 +1,26 @@
 import React, { useState } from 'react';
 import { MaterialRequest, RequestStatus, Rig, Employee } from '../types';
-import { CheckCircle2, XCircle, Clock, AlertCircle, FileSpreadsheet, Inbox, Settings, X, Lock, AlertTriangle } from 'lucide-react';
+import { CheckCircle2, XCircle, Clock, AlertCircle, FileSpreadsheet, Inbox, Settings, X, Lock, AlertTriangle, Trash2, Undo2 } from 'lucide-react';
 
 interface SupervisorDashboardProps {
   requests: MaterialRequest[];
   onUpdateStatus: (id: string, status: RequestStatus) => void;
+  onDeleteRequest: (id: string) => void;
   rigs: Rig[];
   employees: Employee[];
   onChangePassword: (newPassword: string) => void;
 }
 
-export const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({ requests, onUpdateStatus, rigs, employees, onChangePassword }) => {
+export const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({ requests, onUpdateStatus, onDeleteRequest, rigs, employees, onChangePassword }) => {
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const [capsLockOn, setCapsLockOn] = useState(false);
   
+  // Tabs for History/Trash
+  const [activeHistoryTab, setActiveHistoryTab] = useState<'approved' | 'rejected'>('approved');
+
   // Selection State for Export
   const [selectedRequestIds, setSelectedRequestIds] = useState<Set<string>>(new Set());
 
@@ -24,7 +28,12 @@ export const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({ reques
   const getEmployeeName = (id: string) => employees.find(e => e.id === id)?.name || id;
 
   const pendingRequests = requests.filter(r => r.status === RequestStatus.PENDING);
-  const historyRequests = requests.filter(r => r.status !== RequestStatus.PENDING);
+  
+  // Split history into Approved and Rejected (Trash)
+  const approvedRequests = requests.filter(r => r.status === RequestStatus.APPROVED);
+  const rejectedRequests = requests.filter(r => r.status === RequestStatus.REJECTED);
+  
+  const currentList = activeHistoryTab === 'approved' ? approvedRequests : rejectedRequests;
 
   const toggleSelection = (id: string) => {
     const newSelection = new Set(selectedRequestIds);
@@ -37,21 +46,19 @@ export const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({ reques
   };
 
   const toggleAllSelection = () => {
-    if (selectedRequestIds.size === historyRequests.length) {
+    if (selectedRequestIds.size === currentList.length) {
         setSelectedRequestIds(new Set());
     } else {
-        setSelectedRequestIds(new Set(historyRequests.map(r => r.id)));
+        setSelectedRequestIds(new Set(currentList.map(r => r.id)));
     }
   };
 
   const handleExportCSV = () => {
-    // Filter requests that are SELECTED and match the criteria (usually just history requests, but we verify they are in the list)
-    const requestsToExport = historyRequests.filter(r => 
-        selectedRequestIds.has(r.id) && r.status === RequestStatus.APPROVED
-    );
+    // Export items from the CURRENT ACTIVE TAB that are selected
+    const requestsToExport = currentList.filter(r => selectedRequestIds.has(r.id));
 
     if (requestsToExport.length === 0) {
-      alert("Selecione pelo menos uma solicitação aprovada na lista de histórico para exportar.");
+      alert("Selecione pelo menos uma solicitação na lista para exportar.");
       return;
     }
 
@@ -63,7 +70,8 @@ export const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({ reques
       "COLABORADOR",
       "MATRÍCULA",
       "QUANTIDADE",
-      "UNIDADE"
+      "UNIDADE",
+      "STATUS"
     ];
 
     const csvRows = [headers.join(",")];
@@ -71,6 +79,7 @@ export const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({ reques
     requestsToExport.forEach(req => {
       const rigName = getRigName(req.rigId).replace(/"/g, '""');
       const empName = getEmployeeName(req.employeeId).replace(/"/g, '""');
+      const statusLabel = req.status === RequestStatus.APPROVED ? 'APROVADO' : 'REPROVADO';
 
       req.items.forEach(item => {
         const row = [
@@ -80,7 +89,8 @@ export const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({ reques
           `"${empName}"`,
           req.employeeId, // Matrícula em coluna separada
           item.quantity,
-          item.material.unit
+          item.material.unit,
+          statusLabel
         ];
         csvRows.push(row.join(","));
       });
@@ -91,7 +101,7 @@ export const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({ reques
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `sondalog_export_${new Date().toISOString().split('T')[0]}.csv`;
+    link.download = `sondalog_export_${activeHistoryTab}_${new Date().toISOString().split('T')[0]}.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -199,24 +209,61 @@ export const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({ reques
         )}
       </div>
 
-      {/* History Section */}
+      {/* History and Trash Section */}
       <div>
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
-          <h2 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
-            <Clock className="w-5 h-5 text-slate-400" />
-            Seu Histórico Recente
-          </h2>
+          <div className="flex items-center gap-4">
+              <h2 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
+                {activeHistoryTab === 'approved' ? (
+                     <Clock className="w-5 h-5 text-slate-400" />
+                ) : (
+                     <Trash2 className="w-5 h-5 text-red-500" />
+                )}
+                {activeHistoryTab === 'approved' ? 'Histórico' : 'Lixeira'}
+              </h2>
+              
+              {/* Tab Switcher */}
+              <div className="flex bg-slate-100 p-1 rounded-lg">
+                  <button
+                    onClick={() => { setActiveHistoryTab('approved'); setSelectedRequestIds(new Set()); }}
+                    className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${
+                        activeHistoryTab === 'approved' 
+                        ? 'bg-white text-blue-700 shadow-sm' 
+                        : 'text-slate-500 hover:text-slate-700'
+                    }`}
+                  >
+                    Aprovados
+                  </button>
+                  <button
+                    onClick={() => { setActiveHistoryTab('rejected'); setSelectedRequestIds(new Set()); }}
+                    className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all flex items-center gap-1 ${
+                        activeHistoryTab === 'rejected' 
+                        ? 'bg-red-50 text-red-700 shadow-sm border border-red-100' 
+                        : 'text-slate-500 hover:text-slate-700'
+                    }`}
+                  >
+                    Lixeira <span className="bg-slate-200 text-slate-600 text-[10px] px-1.5 py-0.5 rounded-full">{rejectedRequests.length}</span>
+                  </button>
+              </div>
+          </div>
+
           <button
             onClick={handleExportCSV}
             className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-medium shadow-sm transition-colors active:scale-95 transform"
           >
             <FileSpreadsheet className="w-4 h-4" />
-            Exportar Selecionados (CSV)
+            Exportar {activeHistoryTab === 'approved' ? 'Aprovados' : 'Lixeira'}
           </button>
         </div>
         
-        {requests.length > 0 ? (
-          <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+        {currentList.length > 0 ? (
+          <div className={`bg-white rounded-lg border shadow-sm overflow-hidden ${activeHistoryTab === 'rejected' ? 'border-red-200' : 'border-slate-200'}`}>
+            {activeHistoryTab === 'rejected' && (
+                <div className="bg-red-50 px-6 py-2 text-xs text-red-700 border-b border-red-100 flex items-center gap-2">
+                    <AlertTriangle className="w-3 h-3" />
+                    Itens na lixeira podem ser excluídos definitivamente ou restaurados (aprovados).
+                </div>
+            )}
             <table className="min-w-full divide-y divide-slate-200">
               <thead className="bg-slate-50">
                 <tr>
@@ -224,20 +271,19 @@ export const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({ reques
                       <input 
                         type="checkbox" 
                         className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                        checked={historyRequests.length > 0 && selectedRequestIds.size === historyRequests.length}
+                        checked={currentList.length > 0 && selectedRequestIds.size === currentList.length}
                         onChange={toggleAllSelection}
                       />
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Data</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Sonda</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Matrícula</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Colaborador</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Solicitante</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Itens</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">Ações</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-slate-200 text-sm">
-                {historyRequests.map((req) => (
+                {currentList.map((req) => (
                   <tr key={req.id} className="hover:bg-slate-50">
                     <td className="px-6 py-4">
                         <input 
@@ -249,36 +295,56 @@ export const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({ reques
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-slate-500">{new Date(req.createdAt).toLocaleDateString()}</td>
                     <td className="px-6 py-4 whitespace-nowrap font-medium text-slate-900">{getRigName(req.rigId)}</td>
-                    <td className="px-6 py-4 whitespace-nowrap font-mono text-slate-500">{req.employeeId}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-slate-700">{getEmployeeName(req.employeeId)}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-slate-500">{req.items.length} itens</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-slate-700">
+                        {getEmployeeName(req.employeeId)}
+                        <span className="block text-xs text-slate-400">{req.employeeId}</span>
+                    </td>
+                    <td className="px-6 py-4 text-slate-500">
+                        <div className="max-w-xs truncate" title={req.items.map(i => `${i.quantity}x ${i.material.description}`).join(', ')}>
+                            {req.items.length} itens: {req.items[0].material.description} {req.items.length > 1 ? `(+${req.items.length - 1})` : ''}
+                        </div>
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        req.status === RequestStatus.APPROVED 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-red-100 text-red-800'
-                      }`}>
-                        {req.status === RequestStatus.APPROVED ? 'Aprovado' : 'Negado'}
-                      </span>
+                      {activeHistoryTab === 'approved' ? (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            Aprovado
+                          </span>
+                      ) : (
+                          <div className="flex justify-end gap-2">
+                              <button 
+                                onClick={() => { if(confirm('Restaurar e aprovar esta solicitação?')) onUpdateStatus(req.id, RequestStatus.APPROVED) }}
+                                className="p-1.5 text-slate-400 hover:text-green-600 hover:bg-green-50 rounded-md transition-colors"
+                                title="Restaurar (Aprovar)"
+                              >
+                                  <Undo2 className="w-4 h-4" />
+                              </button>
+                              <button 
+                                onClick={() => { if(confirm('Excluir definitivamente? Esta ação não pode ser desfeita.')) onDeleteRequest(req.id) }}
+                                className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                                title="Excluir Definitivamente"
+                              >
+                                  <Trash2 className="w-4 h-4" />
+                              </button>
+                          </div>
+                      )}
                     </td>
                   </tr>
                 ))}
-                {historyRequests.length === 0 && (
-                  <tr>
-                    <td colSpan={7} className="px-6 py-4 text-center text-slate-400 text-sm">Nenhum histórico disponível.</td>
-                  </tr>
-                )}
               </tbody>
             </table>
           </div>
         ) : (
            <div className="bg-white p-12 rounded-xl border border-slate-200 text-center flex flex-col items-center justify-center space-y-4">
-              <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center">
-                  <Inbox className="w-8 h-8 text-slate-400" />
+              <div className={`w-16 h-16 rounded-full flex items-center justify-center ${activeHistoryTab === 'rejected' ? 'bg-red-50' : 'bg-slate-100'}`}>
+                  {activeHistoryTab === 'rejected' ? <Trash2 className="w-8 h-8 text-red-300" /> : <Inbox className="w-8 h-8 text-slate-400" />}
               </div>
               <div>
-                  <h3 className="text-lg font-medium text-slate-900">Nenhuma solicitação encontrada</h3>
-                  <p className="text-slate-500 mt-1">Você não possui solicitações pendentes ou histórico recente.</p>
+                  <h3 className="text-lg font-medium text-slate-900">
+                    {activeHistoryTab === 'rejected' ? 'Lixeira Vazia' : 'Nenhum histórico'}
+                  </h3>
+                  <p className="text-slate-500 mt-1">
+                    {activeHistoryTab === 'rejected' ? 'Nenhuma solicitação reprovada encontrada.' : 'Nenhuma solicitação aprovada encontrada.'}
+                  </p>
               </div>
           </div>
         )}
