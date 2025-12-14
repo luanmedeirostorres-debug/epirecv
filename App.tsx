@@ -31,24 +31,45 @@ const App: React.FC = () => {
   const [passwordInput, setPasswordInput] = useState('');
   const [loginError, setLoginError] = useState(false);
 
-  // Database Management Functions
+  // --- Database Management Functions (CRUD) ---
+
+  // Materials
   const handleAddMaterial = (material: Material) => {
     setMaterials([...materials, material]);
   };
+  const handleUpdateMaterial = (oldSku: string, updatedMaterial: Material) => {
+    setMaterials(materials.map(m => m.sku === oldSku ? updatedMaterial : m));
+  };
+  const handleDeleteMaterial = (sku: string) => {
+    setMaterials(materials.filter(m => m.sku !== sku));
+  };
 
+  // Employees (includes Supervisors)
   const handleAddEmployee = (employee: Employee) => {
     setEmployees([...employees, employee]);
   };
+  const handleUpdateEmployee = (oldId: string, updatedEmployee: Employee) => {
+    setEmployees(employees.map(e => e.id === oldId ? updatedEmployee : e));
+  };
+  const handleDeleteEmployee = (id: string) => {
+    setEmployees(employees.filter(e => e.id !== id));
+  };
 
+  // Rigs
   const handleAddRig = (rig: Rig) => {
     setRigs([...rigs, rig]);
   };
+  const handleUpdateRig = (oldId: string, updatedRig: Rig) => {
+    setRigs(rigs.map(r => r.id === oldId ? updatedRig : r));
+  };
+  const handleDeleteRig = (id: string) => {
+    setRigs(rigs.filter(r => r.id !== id));
+  };
 
+  // Admins
   const handleAddAdmin = (admin: Admin) => {
     setAdmins([...admins, admin]);
   }
-
-  // Update existing admin (for "My Account" feature)
   const handleUpdateAdmin = (originalId: string, updatedAdmin: Admin) => {
     // Check if ID is being changed and if it conflicts with another existing admin (excluding self)
     if (originalId !== updatedAdmin.id && admins.some(a => a.id === updatedAdmin.id)) {
@@ -67,8 +88,20 @@ const App: React.FC = () => {
     
     return true;
   };
+  const handleDeleteAdmin = (id: string) => {
+    if (admins.length <= 1) {
+        alert("Não é possível excluir o último administrador.");
+        return;
+    }
+    if (currentAdmin && currentAdmin.id === id) {
+        alert("Você não pode excluir sua própria conta enquanto estiver logado.");
+        return;
+    }
+    setAdmins(admins.filter(a => a.id !== id));
+  };
 
-  // Request Management Functions
+
+  // --- Request Management Functions ---
   const handleCreateRequest = (rigId: string, employeeId: string, supervisorId: string, items: RequestItem[]) => {
     const newRequest: MaterialRequest = {
       id: Math.random().toString(36).substr(2, 9),
@@ -361,11 +394,22 @@ const App: React.FC = () => {
             </div>
             <AdminDashboard 
               currentAdmin={currentAdmin}
+              materials={materials}
+              employees={employees}
+              rigs={rigs}
+              admins={admins}
               onAddMaterial={handleAddMaterial}
+              onUpdateMaterial={handleUpdateMaterial}
+              onDeleteMaterial={handleDeleteMaterial}
               onAddEmployee={handleAddEmployee}
+              onUpdateEmployee={handleUpdateEmployee}
+              onDeleteEmployee={handleDeleteEmployee}
               onAddRig={handleAddRig}
+              onUpdateRig={handleUpdateRig}
+              onDeleteRig={handleDeleteRig}
               onAddAdmin={handleAddAdmin}
               onUpdateAdmin={handleUpdateAdmin}
+              onDeleteAdmin={handleDeleteAdmin}
             />
           </div>
         )}

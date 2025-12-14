@@ -16,17 +16,41 @@ export const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({ reques
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordError, setPasswordError] = useState('');
   
+  // Selection State for Export
+  const [selectedRequestIds, setSelectedRequestIds] = useState<Set<string>>(new Set());
+
   const getRigName = (id: string) => rigs.find(r => r.id === id)?.name || id;
   const getEmployeeName = (id: string) => employees.find(e => e.id === id)?.name || id;
 
   const pendingRequests = requests.filter(r => r.status === RequestStatus.PENDING);
   const historyRequests = requests.filter(r => r.status !== RequestStatus.PENDING);
 
-  const handleExportCSV = () => {
-    const approvedRequests = requests.filter(r => r.status === RequestStatus.APPROVED);
+  const toggleSelection = (id: string) => {
+    const newSelection = new Set(selectedRequestIds);
+    if (newSelection.has(id)) {
+        newSelection.delete(id);
+    } else {
+        newSelection.add(id);
+    }
+    setSelectedRequestIds(newSelection);
+  };
 
-    if (approvedRequests.length === 0) {
-      alert("Não há solicitações aprovadas para exportar.");
+  const toggleAllSelection = () => {
+    if (selectedRequestIds.size === historyRequests.length) {
+        setSelectedRequestIds(new Set());
+    } else {
+        setSelectedRequestIds(new Set(historyRequests.map(r => r.id)));
+    }
+  };
+
+  const handleExportCSV = () => {
+    // Filter requests that are SELECTED and match the criteria (usually just history requests, but we verify they are in the list)
+    const requestsToExport = historyRequests.filter(r => 
+        selectedRequestIds.has(r.id) && r.status === RequestStatus.APPROVED
+    );
+
+    if (requestsToExport.length === 0) {
+      alert("Selecione pelo menos uma solicitação aprovada na lista de histórico para exportar.");
       return;
     }
 
@@ -43,7 +67,7 @@ export const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({ reques
 
     const csvRows = [headers.join(",")];
 
-    approvedRequests.forEach(req => {
+    requestsToExport.forEach(req => {
       const rigName = getRigName(req.rigId).replace(/"/g, '""');
       const empName = getEmployeeName(req.employeeId).replace(/"/g, '""');
 
@@ -66,7 +90,7 @@ export const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({ reques
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `aprovados_sondalog_${new Date().toISOString().split('T')[0]}.csv`;
+    link.download = `sondalog_export_${new Date().toISOString().split('T')[0]}.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -183,7 +207,7 @@ export const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({ reques
             className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-medium shadow-sm transition-colors active:scale-95 transform"
           >
             <FileSpreadsheet className="w-4 h-4" />
-            Exportar Aprovados (CSV)
+            Exportar Selecionados (CSV)
           </button>
         </div>
         
@@ -192,6 +216,14 @@ export const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({ reques
             <table className="min-w-full divide-y divide-slate-200">
               <thead className="bg-slate-50">
                 <tr>
+                  <th className="px-6 py-3 w-10">
+                      <input 
+                        type="checkbox" 
+                        className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                        checked={historyRequests.length > 0 && selectedRequestIds.size === historyRequests.length}
+                        onChange={toggleAllSelection}
+                      />
+                  </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Data</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Sonda</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Matrícula</th>
@@ -203,6 +235,14 @@ export const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({ reques
               <tbody className="bg-white divide-y divide-slate-200 text-sm">
                 {historyRequests.map((req) => (
                   <tr key={req.id} className="hover:bg-slate-50">
+                    <td className="px-6 py-4">
+                        <input 
+                            type="checkbox" 
+                            className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                            checked={selectedRequestIds.has(req.id)}
+                            onChange={() => toggleSelection(req.id)}
+                        />
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-slate-500">{new Date(req.createdAt).toLocaleDateString()}</td>
                     <td className="px-6 py-4 whitespace-nowrap font-medium text-slate-900">{getRigName(req.rigId)}</td>
                     <td className="px-6 py-4 whitespace-nowrap font-mono text-slate-500">{req.employeeId}</td>
@@ -221,7 +261,7 @@ export const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({ reques
                 ))}
                 {historyRequests.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-6 py-4 text-center text-slate-400 text-sm">Nenhum histórico disponível.</td>
+                    <td colSpan={7} className="px-6 py-4 text-center text-slate-400 text-sm">Nenhum histórico disponível.</td>
                   </tr>
                 )}
               </tbody>
