@@ -308,8 +308,8 @@ const App: React.FC = () => {
                 <Drill className="h-6 w-6 text-white" />
               </div>
               <div>
-                <span className="font-bold text-lg tracking-tight">EPI SONDAS</span>
-                <span className="text-xs text-slate-400 block -mt-1 font-medium">SOLICITAÇÃO DE EPI</span>
+                <span className="font-bold text-lg tracking-tight">SondaLog</span>
+                <span className="text-xs text-slate-400 block -mt-1 font-medium">Gestão de Materiais</span>
               </div>
             </div>
             
@@ -628,7 +628,7 @@ const App: React.FC = () => {
       <footer className="bg-white border-t border-slate-200 mt-auto">
         <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
           <p className="text-center text-sm text-slate-500">
-            © 2024 EPI SONDAS Oil & Gas. Todos os direitos reservados.
+            © 2024 SondaLog Oil & Gas. Todos os direitos reservados.
           </p>
         </div>
       </footer>
