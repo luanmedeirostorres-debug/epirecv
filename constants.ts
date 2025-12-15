@@ -33,9 +33,19 @@ export const ADMINS: Admin[] = [
 // Helper to infer unit based on description
 const getUnit = (desc: string): string => {
   const d = desc.toUpperCase();
+  // Itens que são PARES
   if (d.includes('LUVA') || d.includes('BOTA') || d.includes('CALÇADO') || d.includes('PERNEIRA') || d.includes('MANGOTE')) return 'PAR';
-  if (d.includes('METRO') || d.includes('CABO')) return 'MT';
+  
+  // Itens que são UNIDADES específicas (exceções que podem conter 'metro')
+  if (d.includes('TRAVA QUEDA') || d.includes('DISPOSITIVO') || d.includes('TALABARTE') || d.includes('CINTA') || d.includes('CILINDRO')) return 'UN';
+  
+  // Itens por METRAGEM
+  if (d.includes('METRO') || d.includes('CABO') || d.includes('CORDA')) return 'MT';
+  
+  // Conjuntos
   if (d.includes('CONJUNTO')) return 'CJ';
+  
+  // Padrão
   return 'UN';
 };
 
@@ -195,6 +205,7 @@ const RAW_MATERIALS = [
   ['24618150301591', 'MACACÃO DE PROTEÇÃO CONTRA ARCO ELÉTRICO PARA SEP / ALTATENSÃO (XG)'],
   ['24618180606188', 'CINTO DE SEGURANÇA TIPO PARAQUEDISTA VICSA 20420'],
   ['23141180606204', 'TALABARTE SEGURANÇA DUPLO Y (110 mm)'],
+  ['23141180606206', 'TALABARTE SEGURANÇA DUPLO Y (55 mm)'],
   ['22517210401592', 'CINTO DE SEGURANÇA TIPO PARAQUEDISTA VICSA 20420)'],
   ['23141180606247', 'CINTO DE SEGURANÇA DIELÉTRICO/ANTI-CHAMAS PARAQUEDISTA VICSA (Cinto)'],
   ['23141180606248', 'CINTO DE SEGURANÇA DIELÉTRICO/ANTI-CHAMAS PARAQUEDISTA VICSA (Talabarte)'],
@@ -205,9 +216,9 @@ const RAW_MATERIALS = [
   ['23141180606208', 'MOSQUETÃO DE SEGURANÇA OVAL EM AÇO FORJADO'],
   ['13141180646630', 'MOSQUETÃO DE AÇO COM TRAVA DUPLA'],
   ['14618230031492', 'TRAVA QUEDA DESLIZANTE'],
-  ['14618230031494', 'TRAVA QUEDAS RETRÁTIL 02 METROS – CTRA 42'],
-  ['14618230031496', 'CTRA 30 – TRAVA QUEDAS RETRÁTIL 30 M'],
-  ['14618230031496-B', 'CTRA 09 – TRAVA QUEDAS RETRÁTIL 09 M'],
+  ['14618230031494', 'TRAVA QUEDAS RETRÁTIL 42 METROS – CTRA 42'],
+  ['14618230031498', 'CTRA 30 – TRAVA QUEDAS RETRÁTIL 30 M'],
+  ['14618230031496', 'TRAVA QUEDAS RETRÁTIL METROS – CTRA 09'],
   ['14618230146631', 'TRAVA QUEDAS RETRÁTIL EM CABO DE AÇO 6 METROS'],
   ['14618230031491', 'TRAVA QUEDAS RETRÁTIL DUPLO EM Y COM CAIXA EM ABS E COM FITA DE 2,1M'],
   ['12012241646632', 'DISPOSITIVO DE DESCIDA INCLINADO/AUTOMÁTICO 3M DBI-SALA ROLLGLISS'],
