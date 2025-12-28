@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Material, Employee, Rig, Admin, MaterialRequest } from '../types';
-import { Database, UserPlus, HardHat, PackagePlus, Save, UserCog, Shield, AlertTriangle, Settings, Pencil, Trash2, X, Plus, Briefcase, Download, Upload } from 'lucide-react';
+import { Database, UserPlus, HardHat, PackagePlus, Save, UserCog, Shield, AlertTriangle, Settings, Pencil, Trash2, X, Plus, Briefcase, Download, Upload, RefreshCcw } from 'lucide-react';
+import { MATERIALS as DEFAULT_MATERIALS } from '../constants';
 
 interface AdminDashboardProps {
   currentAdmin: Admin;
@@ -323,6 +324,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     // Reset input
     e.target.value = '';
   };
+
+  const handleResetMaterials = () => {
+    if (confirm("Deseja resetar a lista de materiais para a versão padrão do sistema? Isso substituirá sua lista atual.")) {
+        onImportDatabase({
+            materials: DEFAULT_MATERIALS,
+            employees,
+            rigs,
+            admins,
+            roles,
+            requests
+        });
+        alert("Lista de materiais resetada com sucesso!");
+    }
+  }
 
   // --- SELF UPDATE ---
   const handleSelfUpdateSubmit = (e: React.FormEvent) => {
@@ -1071,7 +1086,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     </p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {/* EXPORT SECTION */}
                     <div className="bg-slate-50 border border-slate-200 rounded-lg p-6 flex flex-col items-center text-center">
                         <div className="p-3 bg-blue-100 rounded-full mb-4">
@@ -1079,7 +1094,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         </div>
                         <h4 className="font-semibold text-slate-800 mb-2">Exportar Dados</h4>
                         <p className="text-sm text-slate-500 mb-6">
-                            Gera um arquivo contendo todos os Materiais, Colaboradores, Sondas, Administradores e Solicitações atuais.
+                            Gera um arquivo contendo todos os Materiais, Colaboradores, Sondas e Solicitações atuais.
                         </p>
                         <button 
                             onClick={handleExportBackup}
@@ -1096,8 +1111,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         </div>
                         <h4 className="font-semibold text-slate-800 mb-2">Restaurar Dados</h4>
                         <p className="text-sm text-slate-500 mb-6">
-                            Carregue um arquivo de backup (.json) para restaurar o banco de dados. <br/>
-                            <span className="text-red-500 font-bold">ATENÇÃO: Isso substituirá os dados atuais.</span>
+                            Carregue um arquivo de backup (.json) para restaurar o banco de dados.
                         </p>
                         
                         <input 
@@ -1113,6 +1127,23 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             className="px-6 py-2 bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 rounded-md font-medium transition-colors flex items-center gap-2"
                         >
                             <Upload className="w-4 h-4" /> Selecionar Arquivo
+                        </button>
+                    </div>
+
+                    {/* RESET TO SOURCE SECTION */}
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-6 flex flex-col items-center text-center">
+                        <div className="p-3 bg-amber-100 rounded-full mb-4">
+                            <RefreshCcw className="w-8 h-8 text-amber-600" />
+                        </div>
+                        <h4 className="font-semibold text-amber-800 mb-2">Resetar Materiais</h4>
+                        <p className="text-sm text-amber-600 mb-6">
+                            Atualiza a lista de materiais para a versão padrão definida no código (EPIs RECV).
+                        </p>
+                        <button 
+                            onClick={handleResetMaterials}
+                            className="px-6 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-md font-medium transition-colors flex items-center gap-2"
+                        >
+                            <RefreshCcw className="w-4 h-4" /> Resetar p/ Padrão
                         </button>
                     </div>
                 </div>
