@@ -1,17 +1,20 @@
 import React, { useState } from 'react';
-import { MaterialRequest, RequestStatus, Rig, Employee } from '../types';
-import { CheckCircle2, XCircle, Clock, AlertCircle, FileSpreadsheet, Inbox, Settings, X, Lock, AlertTriangle, Trash2, Undo2 } from 'lucide-react';
+import { MaterialRequest, RequestStatus, Rig, Employee, RequestItem } from '../types';
+import { CheckCircle2, XCircle, Clock, AlertCircle, FileSpreadsheet, Inbox, Settings, X, Lock, AlertTriangle, Trash2, Undo2, Pencil, Save, CheckSquare, Square } from 'lucide-react';
 
 interface SupervisorDashboardProps {
   requests: MaterialRequest[];
   onUpdateStatus: (id: string, status: RequestStatus) => void;
+  onUpdateItems: (id: string, items: RequestItem[]) => void;
   onDeleteRequest: (id: string) => void;
   rigs: Rig[];
   employees: Employee[];
   onChangePassword: (newPassword: string) => void;
 }
 
-export const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({ requests, onUpdateStatus, onDeleteRequest, rigs, employees, onChangePassword }) => {
+export const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({ 
+  requests, onUpdateStatus, onUpdateItems, onDeleteRequest, rigs, employees, onChangePassword 
+}) => {
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -21,59 +24,100 @@ export const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({ reques
   // Tabs for History/Trash
   const [activeHistoryTab, setActiveHistoryTab] = useState<'approved' | 'rejected'>('approved');
 
-  // Selection State for Export
-  const [selectedRequestIds, setSelectedRequestIds] = useState<Set<string>>(new Set());
+  // Selection States
+  const [selectedPendingIds, setSelectedPendingIds] = useState<Set<string>>(new Set());
+  const [selectedHistoryIds, setSelectedHistoryIds] = useState<Set<string>>(new Set());
+
+  // Editing State for Items
+  const [editingRequestId, setEditingRequestId] = useState<string | null>(null);
+  const [tempItems, setTempItems] = useState<RequestItem[]>([]);
 
   const getRigName = (id: string) => rigs.find(r => r.id === id)?.name || id;
   const getEmployeeName = (id: string) => employees.find(e => e.id === id)?.name || id;
 
   const pendingRequests = requests.filter(r => r.status === RequestStatus.PENDING);
-  
-  // Split history into Approved and Rejected (Trash)
   const approvedRequests = requests.filter(r => r.status === RequestStatus.APPROVED);
   const rejectedRequests = requests.filter(r => r.status === RequestStatus.REJECTED);
   
-  const currentList = activeHistoryTab === 'approved' ? approvedRequests : rejectedRequests;
+  const currentHistoryList = activeHistoryTab === 'approved' ? approvedRequests : rejectedRequests;
 
-  const toggleSelection = (id: string) => {
-    const newSelection = new Set(selectedRequestIds);
-    if (newSelection.has(id)) {
-        newSelection.delete(id);
-    } else {
-        newSelection.add(id);
-    }
-    setSelectedRequestIds(newSelection);
+  // --- SELECTION HANDLERS ---
+  const togglePendingSelection = (id: string) => {
+    const next = new Set(selectedPendingIds);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    setSelectedPendingIds(next);
   };
 
-  const toggleAllSelection = () => {
-    if (selectedRequestIds.size === currentList.length) {
-        setSelectedRequestIds(new Set());
+  const toggleAllPending = () => {
+    if (selectedPendingIds.size === pendingRequests.length) {
+      setSelectedPendingIds(new Set());
     } else {
-        setSelectedRequestIds(new Set(currentList.map(r => r.id)));
+      setSelectedPendingIds(new Set(pendingRequests.map(r => r.id)));
     }
   };
 
+  const toggleHistorySelection = (id: string) => {
+    const next = new Set(selectedHistoryIds);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    setSelectedHistoryIds(next);
+  };
+
+  const toggleAllHistory = () => {
+    if (selectedHistoryIds.size === currentHistoryList.length) {
+      setSelectedHistoryIds(new Set());
+    } else {
+      setSelectedHistoryIds(new Set(currentHistoryList.map(r => r.id)));
+    }
+  };
+
+  // --- BULK ACTIONS ---
+  const handleBulkApprove = () => {
+    if (confirm(`Aprovar ${selectedPendingIds.size} solicitações selecionadas?`)) {
+      selectedPendingIds.forEach(id => onUpdateStatus(id, RequestStatus.APPROVED));
+      setSelectedPendingIds(new Set());
+    }
+  };
+
+  const handleBulkReject = () => {
+    if (confirm(`Negar ${selectedPendingIds.size} solicitações selecionadas?`)) {
+      selectedPendingIds.forEach(id => onUpdateStatus(id, RequestStatus.REJECTED));
+      setSelectedPendingIds(new Set());
+    }
+  };
+
+  // --- ITEM EDITING ---
+  const startEditing = (req: MaterialRequest) => {
+    setEditingRequestId(req.id);
+    setTempItems(JSON.parse(JSON.stringify(req.items))); // Deep clone
+  };
+
+  const cancelEditing = () => {
+    setEditingRequestId(null);
+    setTempItems([]);
+  };
+
+  const handleTempQtyChange = (idx: number, val: string) => {
+    const newItems = [...tempItems];
+    newItems[idx].quantity = Math.max(0, parseInt(val) || 0);
+    setTempItems(newItems);
+  };
+
+  const saveItemChanges = (id: string) => {
+    onUpdateItems(id, tempItems);
+    setEditingRequestId(null);
+    setTempItems([]);
+    alert("Quantidades atualizadas com sucesso!");
+  };
+
+  // --- EXPORT ---
   const handleExportCSV = () => {
-    // Export items from the CURRENT ACTIVE TAB that are selected
-    const requestsToExport = currentList.filter(r => selectedRequestIds.has(r.id));
-
+    const requestsToExport = currentHistoryList.filter(r => selectedHistoryIds.has(r.id));
     if (requestsToExport.length === 0) {
-      alert("Selecione pelo menos uma solicitação na lista para exportar.");
+      alert("Selecione solicitações na lista para exportar.");
       return;
     }
 
-    // Cabeçalhos em CAIXA ALTA conforme solicitado para clareza na exportação
-    const headers = [
-      "SKU",
-      "DESCRIÇÃO",
-      "SONDA",
-      "COLABORADOR",
-      "MATRÍCULA",
-      "QUANTIDADE",
-      "UNIDADE",
-      "STATUS"
-    ];
-
+    const headers = ["SKU", "DESCRIÇÃO", "SONDA", "COLABORADOR", "MATRÍCULA", "QUANTIDADE", "UNIDADE", "STATUS"];
     const csvRows = [headers.join(",")];
 
     requestsToExport.forEach(req => {
@@ -82,44 +126,35 @@ export const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({ reques
       const statusLabel = req.status === RequestStatus.APPROVED ? 'APROVADO' : 'REPROVADO';
 
       req.items.forEach(item => {
-        const row = [
+        csvRows.push([
           item.material.sku,
           `"${item.material.description.replace(/"/g, '""')}"`,
           `"${rigName}"`,
           `"${empName}"`,
-          req.employeeId, // Matrícula em coluna separada
+          req.employeeId,
           item.quantity,
           item.material.unit,
           statusLabel
-        ];
-        csvRows.push(row.join(","));
+        ].join(","));
       });
     });
 
-    const csvContent = csvRows.join("\n");
-    const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
+    const blob = new Blob(["\uFEFF" + csvRows.join("\n")], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `sondalog_export_${activeHistoryTab}_${new Date().toISOString().split('T')[0]}.csv`;
-    document.body.appendChild(link);
+    link.download = `sondalog_export_${activeHistoryTab}.csv`;
     link.click();
-    document.body.removeChild(link);
   };
 
   const handlePasswordSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (newPassword.length < 4) {
-      setPasswordError('A senha deve ter pelo menos 4 caracteres.');
+    if (newPassword.length < 4 || newPassword !== confirmPassword) {
+      setPasswordError('Verifique a senha (mínimo 4 caracteres).');
       return;
     }
-    if (newPassword !== confirmPassword) {
-      setPasswordError('As senhas não conferem.');
-      return;
-    }
-
     onChangePassword(newPassword);
-    alert('Senha alterada com sucesso!');
+    alert('Senha alterada!');
     setIsPasswordModalOpen(false);
     setNewPassword('');
     setConfirmPassword('');
@@ -128,15 +163,11 @@ export const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({ reques
 
   return (
     <div className="space-y-8">
-      
       {/* Top Controls */}
       <div className="flex justify-end gap-2">
          <button
-            onClick={() => {
-                setIsPasswordModalOpen(true);
-                setCapsLockOn(false);
-            }}
-            className="flex items-center gap-2 px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-sm font-medium shadow-sm transition-colors active:scale-95 transform"
+            onClick={() => setIsPasswordModalOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-sm font-medium transition-colors"
           >
             <Settings className="w-4 h-4" />
             Alterar Senha
@@ -144,64 +175,154 @@ export const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({ reques
       </div>
 
       {/* Pending Section */}
-      <div>
-        <h2 className="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
-          <AlertCircle className="w-5 h-5 text-amber-500" />
-          Aguardando Sua Análise
-        </h2>
+      <div className="animate-in fade-in duration-500">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+          <h2 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
+            <AlertCircle className="w-5 h-5 text-amber-500" />
+            Aguardando Sua Análise
+            <span className="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-normal">
+              {pendingRequests.length} pendentes
+            </span>
+          </h2>
+          
+          {selectedPendingIds.size > 0 && (
+            <div className="flex items-center gap-2 bg-blue-50 border border-blue-100 p-2 rounded-lg animate-in slide-in-from-right-4">
+              <span className="text-xs font-semibold text-blue-700 px-2">{selectedPendingIds.size} selecionados:</span>
+              <button 
+                onClick={handleBulkReject}
+                className="px-3 py-1 bg-white border border-red-200 text-red-600 rounded text-xs font-bold hover:bg-red-50"
+              >
+                Negar Selecionados
+              </button>
+              <button 
+                onClick={handleBulkApprove}
+                className="px-3 py-1 bg-green-600 text-white rounded text-xs font-bold hover:bg-green-700 shadow-sm"
+              >
+                Aprovar Selecionados
+              </button>
+              <button onClick={() => setSelectedPendingIds(new Set())} className="p-1 text-slate-400 hover:text-slate-600">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
+          {pendingRequests.length > 0 && (
+            <button 
+              onClick={toggleAllPending}
+              className="text-sm text-blue-600 hover:underline flex items-center gap-1 font-medium"
+            >
+              {selectedPendingIds.size === pendingRequests.length ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
+              {selectedPendingIds.size === pendingRequests.length ? 'Desmarcar Todos' : 'Selecionar Todos'}
+            </button>
+          )}
+        </div>
         
         {pendingRequests.length === 0 ? (
-          <div className="bg-white p-8 rounded-lg border border-slate-200 text-center text-slate-500">
-            Todas as solicitações atribuídas a você foram analisadas. Bom trabalho!
+          <div className="bg-white p-12 rounded-xl border border-slate-200 text-center flex flex-col items-center gap-3">
+            <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center">
+              <CheckCircle2 className="w-8 h-8 text-green-400" />
+            </div>
+            <div>
+              <p className="text-slate-600 font-medium">Tudo em dia!</p>
+              <p className="text-slate-400 text-sm">Nenhuma solicitação pendente para você.</p>
+            </div>
           </div>
         ) : (
           <div className="grid gap-6">
             {pendingRequests.map((req) => (
-              <div key={req.id} className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
-                <div className="bg-slate-50 px-6 py-4 border-b border-slate-100 flex justify-between items-start md:items-center flex-col md:flex-row gap-4">
-                  <div>
-                    <h3 className="font-semibold text-slate-800">{getRigName(req.rigId)}</h3>
-                    <p className="text-sm text-slate-500">
-                      Solicitante: <span className="text-slate-700 font-medium">{getEmployeeName(req.employeeId)}</span> 
-                      <span className="text-slate-400 mx-2">|</span>
-                      Mat: <span className="text-slate-700 font-mono">{req.employeeId}</span>
-                    </p>
-                    <p className="text-xs text-slate-400 mt-1">{new Date(req.createdAt).toLocaleString()}</p>
+              <div 
+                key={req.id} 
+                className={`bg-white rounded-xl border transition-all ${selectedPendingIds.has(req.id) ? 'border-blue-500 ring-2 ring-blue-50 shadow-md' : 'border-slate-200 shadow-sm'}`}
+              >
+                <div className="bg-slate-50/50 px-6 py-4 border-b border-slate-100 flex justify-between items-center gap-4">
+                  <div className="flex items-center gap-4">
+                    <button 
+                      onClick={() => togglePendingSelection(req.id)}
+                      className={`transition-colors ${selectedPendingIds.has(req.id) ? 'text-blue-600' : 'text-slate-300 hover:text-slate-400'}`}
+                    >
+                      {selectedPendingIds.has(req.id) ? <CheckSquare className="w-6 h-6" /> : <Square className="w-6 h-6" />}
+                    </button>
+                    <div>
+                      <h3 className="font-bold text-slate-800 flex items-center gap-2">
+                        {getRigName(req.rigId)}
+                        <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded uppercase font-bold tracking-tight">#{req.id}</span>
+                      </h3>
+                      <p className="text-sm text-slate-500">
+                        Solicitante: <span className="text-slate-700 font-semibold">{getEmployeeName(req.employeeId)}</span> 
+                        <span className="text-slate-300 mx-2">|</span>
+                        Mat: <span className="font-mono text-slate-600">{req.employeeId}</span>
+                      </p>
+                    </div>
                   </div>
                   <div className="flex gap-2">
+                    {editingRequestId === req.id ? (
+                      <button
+                        onClick={cancelEditing}
+                        className="flex items-center gap-1 px-3 py-1.5 border border-slate-300 text-slate-600 hover:bg-slate-100 rounded-md text-sm font-medium transition-colors"
+                      >
+                        <X className="w-4 h-4" /> Cancelar
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => startEditing(req)}
+                        className="flex items-center gap-1 px-3 py-1.5 border border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-md text-sm font-medium transition-colors"
+                      >
+                        <Pencil className="w-4 h-4" /> Editar Qtds
+                      </button>
+                    )}
+                    
                     <button
                       onClick={() => onUpdateStatus(req.id, RequestStatus.REJECTED)}
-                      className="flex items-center gap-1 px-4 py-2 border border-red-200 text-red-700 bg-red-50 hover:bg-red-100 rounded-md text-sm font-medium transition-colors"
+                      className="px-4 py-1.5 border border-red-200 text-red-600 hover:bg-red-50 rounded-md text-sm font-bold"
                     >
-                      <XCircle className="w-4 h-4" /> Negar
+                      Negar
                     </button>
                     <button
-                      onClick={() => onUpdateStatus(req.id, RequestStatus.APPROVED)}
-                      className="flex items-center gap-1 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md text-sm font-medium shadow-sm transition-colors"
+                      onClick={() => editingRequestId === req.id ? saveItemChanges(req.id) : onUpdateStatus(req.id, RequestStatus.APPROVED)}
+                      className="flex items-center gap-1 px-5 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-md text-sm font-bold shadow-sm"
                     >
-                      <CheckCircle2 className="w-4 h-4" /> Aprovar
+                      {editingRequestId === req.id ? <Save className="w-4 h-4" /> : <CheckCircle2 className="w-4 h-4" />}
+                      {editingRequestId === req.id ? 'Salvar e Validar' : 'Aprovar'}
                     </button>
                   </div>
                 </div>
-                <div className="p-6">
+                <div className="p-0 overflow-x-auto">
                   <table className="min-w-full text-sm">
                     <thead>
-                      <tr className="text-slate-500 border-b border-slate-100">
-                        <th className="text-left py-2 font-medium">SKU</th>
-                        <th className="text-left py-2 font-medium">Descrição</th>
-                        <th className="text-right py-2 font-medium">Qtd</th>
+                      <tr className="text-slate-400 bg-slate-50/30 text-[10px] uppercase font-bold tracking-wider border-b border-slate-100">
+                        <th className="text-left px-6 py-2">SKU</th>
+                        <th className="text-left px-6 py-2">Descrição</th>
+                        <th className="text-right px-6 py-2">Quantidade</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-50">
-                      {req.items.map((item, idx) => (
-                        <tr key={idx}>
-                          <td className="py-2 text-slate-600 font-mono">{item.material.sku}</td>
-                          <td className="py-2 text-slate-800">{item.material.description}</td>
-                          <td className="py-2 text-right font-medium text-slate-800">{item.quantity} {item.material.unit}</td>
+                      {(editingRequestId === req.id ? tempItems : req.items).map((item, idx) => (
+                        <tr key={idx} className={editingRequestId === req.id ? "bg-blue-50/20" : ""}>
+                          <td className="px-6 py-3 text-slate-500 font-mono text-xs">{item.material.sku}</td>
+                          <td className="px-6 py-3 text-slate-700 font-medium">{item.material.description}</td>
+                          <td className="px-6 py-3 text-right">
+                            {editingRequestId === req.id ? (
+                              <div className="flex items-center justify-end gap-2">
+                                <input 
+                                  type="number"
+                                  className="w-20 px-2 py-1 border border-blue-300 rounded focus:ring-2 focus:ring-blue-500 outline-none text-right font-bold text-blue-700"
+                                  value={item.quantity}
+                                  onChange={(e) => handleTempQtyChange(idx, e.target.value)}
+                                  autoFocus={idx === 0}
+                                />
+                                <span className="text-xs text-slate-400 font-bold">{item.material.unit}</span>
+                              </div>
+                            ) : (
+                              <span className="font-bold text-slate-900">{item.quantity} <span className="text-[10px] text-slate-400 uppercase">{item.material.unit}</span></span>
+                            )}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
+                </div>
+                <div className="px-6 py-2 bg-slate-50/30 text-[10px] text-slate-400 text-right">
+                  Criada em: {new Date(req.createdAt).toLocaleString()}
                 </div>
               </div>
             ))}
@@ -209,38 +330,25 @@ export const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({ reques
         )}
       </div>
 
-      {/* History and Trash Section */}
-      <div>
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
+      {/* History Section */}
+      <div className="border-t border-slate-200 pt-8">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
           <div className="flex items-center gap-4">
               <h2 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
-                {activeHistoryTab === 'approved' ? (
-                     <Clock className="w-5 h-5 text-slate-400" />
-                ) : (
-                     <Trash2 className="w-5 h-5 text-red-500" />
-                )}
-                {activeHistoryTab === 'approved' ? 'Histórico' : 'Lixeira'}
+                {activeHistoryTab === 'approved' ? <Clock className="w-5 h-5 text-slate-400" /> : <Trash2 className="w-5 h-5 text-red-500" />}
+                {activeHistoryTab === 'approved' ? 'Histórico de Aprovados' : 'Lixeira'}
               </h2>
               
-              {/* Tab Switcher */}
               <div className="flex bg-slate-100 p-1 rounded-lg">
                   <button
-                    onClick={() => { setActiveHistoryTab('approved'); setSelectedRequestIds(new Set()); }}
-                    className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${
-                        activeHistoryTab === 'approved' 
-                        ? 'bg-white text-blue-700 shadow-sm' 
-                        : 'text-slate-500 hover:text-slate-700'
-                    }`}
+                    onClick={() => { setActiveHistoryTab('approved'); setSelectedHistoryIds(new Set()); }}
+                    className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${activeHistoryTab === 'approved' ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                   >
                     Aprovados
                   </button>
                   <button
-                    onClick={() => { setActiveHistoryTab('rejected'); setSelectedRequestIds(new Set()); }}
-                    className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all flex items-center gap-1 ${
-                        activeHistoryTab === 'rejected' 
-                        ? 'bg-red-50 text-red-700 shadow-sm border border-red-100' 
-                        : 'text-slate-500 hover:text-slate-700'
-                    }`}
+                    onClick={() => { setActiveHistoryTab('rejected'); setSelectedHistoryIds(new Set()); }}
+                    className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all flex items-center gap-1 ${activeHistoryTab === 'rejected' ? 'bg-red-50 text-red-700 shadow-sm border border-red-100' : 'text-slate-500 hover:text-slate-700'}`}
                   >
                     Lixeira <span className="bg-slate-200 text-slate-600 text-[10px] px-1.5 py-0.5 rounded-full">{rejectedRequests.length}</span>
                   </button>
@@ -249,78 +357,73 @@ export const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({ reques
 
           <button
             onClick={handleExportCSV}
-            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-medium shadow-sm transition-colors active:scale-95 transform"
+            disabled={selectedHistoryIds.size === 0}
+            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-medium shadow-sm transition-all disabled:opacity-50"
           >
             <FileSpreadsheet className="w-4 h-4" />
-            Exportar {activeHistoryTab === 'approved' ? 'Aprovados' : 'Lixeira'}
+            Exportar CSV ({selectedHistoryIds.size})
           </button>
         </div>
         
-        {currentList.length > 0 ? (
-          <div className={`bg-white rounded-lg border shadow-sm overflow-hidden ${activeHistoryTab === 'rejected' ? 'border-red-200' : 'border-slate-200'}`}>
-            {activeHistoryTab === 'rejected' && (
-                <div className="bg-red-50 px-6 py-2 text-xs text-red-700 border-b border-red-100 flex items-center gap-2">
-                    <AlertTriangle className="w-3 h-3" />
-                    Itens na lixeira podem ser excluídos definitivamente ou restaurados (aprovados).
-                </div>
-            )}
-            <table className="min-w-full divide-y divide-slate-200">
-              <thead className="bg-slate-50">
+        {currentHistoryList.length > 0 ? (
+          <div className={`bg-white rounded-xl border shadow-sm overflow-hidden ${activeHistoryTab === 'rejected' ? 'border-red-100' : 'border-slate-200'}`}>
+            <table className="min-w-full divide-y divide-slate-100">
+              <thead className="bg-slate-50/50">
                 <tr>
                   <th className="px-6 py-3 w-10">
                       <input 
                         type="checkbox" 
                         className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                        checked={currentList.length > 0 && selectedRequestIds.size === currentList.length}
-                        onChange={toggleAllSelection}
+                        checked={currentHistoryList.length > 0 && selectedHistoryIds.size === currentHistoryList.length}
+                        onChange={toggleAllHistory}
                       />
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Data</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Sonda</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Solicitante</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Itens</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">Ações</th>
+                  <th className="px-6 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-wider">Data</th>
+                  <th className="px-6 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-wider">Sonda</th>
+                  <th className="px-6 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-wider">Solicitante</th>
+                  <th className="px-6 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-wider">Resumo</th>
+                  <th className="px-6 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-wider">Ações</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-slate-200 text-sm">
-                {currentList.map((req) => (
-                  <tr key={req.id} className="hover:bg-slate-50">
+              <tbody className="bg-white divide-y divide-slate-50 text-sm">
+                {currentHistoryList.map((req) => (
+                  <tr key={req.id} className="hover:bg-slate-50/50 transition-colors">
                     <td className="px-6 py-4">
                         <input 
                             type="checkbox" 
                             className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                            checked={selectedRequestIds.has(req.id)}
-                            onChange={() => toggleSelection(req.id)}
+                            checked={selectedHistoryIds.has(req.id)}
+                            onChange={() => toggleHistorySelection(req.id)}
                         />
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-slate-500">{new Date(req.createdAt).toLocaleDateString()}</td>
-                    <td className="px-6 py-4 whitespace-nowrap font-medium text-slate-900">{getRigName(req.rigId)}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-slate-500 text-xs">{new Date(req.createdAt).toLocaleDateString()}</td>
+                    <td className="px-6 py-4 whitespace-nowrap font-bold text-slate-800">{getRigName(req.rigId)}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-slate-700">
-                        {getEmployeeName(req.employeeId)}
-                        <span className="block text-xs text-slate-400">{req.employeeId}</span>
+                        <span className="font-semibold">{getEmployeeName(req.employeeId)}</span>
+                        <span className="block text-[10px] text-slate-400 font-mono">MAT: {req.employeeId}</span>
                     </td>
                     <td className="px-6 py-4 text-slate-500">
-                        <div className="max-w-xs truncate" title={req.items.map(i => `${i.quantity}x ${i.material.description}`).join(', ')}>
+                        <div className="max-w-xs truncate text-xs" title={req.items.map(i => `${i.quantity}x ${i.material.description}`).join(', ')}>
                             {req.items.length} itens: {req.items[0].material.description} {req.items.length > 1 ? `(+${req.items.length - 1})` : ''}
                         </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right">
                       {activeHistoryTab === 'approved' ? (
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-100 text-green-700 uppercase">
                             Aprovado
                           </span>
                       ) : (
-                          <div className="flex justify-end gap-2">
+                          <div className="flex justify-end gap-1">
                               <button 
-                                onClick={() => { if(confirm('Restaurar e aprovar esta solicitação?')) onUpdateStatus(req.id, RequestStatus.APPROVED) }}
-                                className="p-1.5 text-slate-400 hover:text-green-600 hover:bg-green-50 rounded-md transition-colors"
-                                title="Restaurar (Aprovar)"
+                                onClick={() => onUpdateStatus(req.id, RequestStatus.APPROVED)}
+                                className="p-1.5 text-slate-400 hover:text-green-600 hover:bg-green-50 rounded transition-colors"
+                                title="Restaurar e Aprovar"
                               >
                                   <Undo2 className="w-4 h-4" />
                               </button>
                               <button 
-                                onClick={() => { if(confirm('Excluir definitivamente? Esta ação não pode ser desfeita.')) onDeleteRequest(req.id) }}
-                                className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                                onClick={() => { if(confirm('Excluir permanentemente?')) onDeleteRequest(req.id) }}
+                                className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
                                 title="Excluir Definitivamente"
                               >
                                   <Trash2 className="w-4 h-4" />
@@ -334,18 +437,8 @@ export const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({ reques
             </table>
           </div>
         ) : (
-           <div className="bg-white p-12 rounded-xl border border-slate-200 text-center flex flex-col items-center justify-center space-y-4">
-              <div className={`w-16 h-16 rounded-full flex items-center justify-center ${activeHistoryTab === 'rejected' ? 'bg-red-50' : 'bg-slate-100'}`}>
-                  {activeHistoryTab === 'rejected' ? <Trash2 className="w-8 h-8 text-red-300" /> : <Inbox className="w-8 h-8 text-slate-400" />}
-              </div>
-              <div>
-                  <h3 className="text-lg font-medium text-slate-900">
-                    {activeHistoryTab === 'rejected' ? 'Lixeira Vazia' : 'Nenhum histórico'}
-                  </h3>
-                  <p className="text-slate-500 mt-1">
-                    {activeHistoryTab === 'rejected' ? 'Nenhuma solicitação reprovada encontrada.' : 'Nenhuma solicitação aprovada encontrada.'}
-                  </p>
-              </div>
+           <div className="bg-white p-12 rounded-xl border border-dashed border-slate-200 text-center text-slate-400">
+              Nada para mostrar aqui no momento.
           </div>
         )}
       </div>
@@ -354,69 +447,16 @@ export const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({ reques
       {isPasswordModalOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-xl shadow-2xl max-w-sm w-full p-6 relative">
-            <button 
-              onClick={() => setIsPasswordModalOpen(false)}
-              className="absolute right-4 top-4 text-slate-400 hover:text-slate-600"
-            >
-              <X className="w-5 h-5" />
-            </button>
-            
+            <button onClick={() => setIsPasswordModalOpen(false)} className="absolute right-4 top-4 text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
             <div className="text-center mb-6">
-              <div className="mx-auto w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mb-4">
-                <Lock className="w-6 h-6 text-slate-600" />
-              </div>
-              <h3 className="text-lg font-bold text-slate-800">Alterar Senha de Acesso</h3>
-              <p className="text-sm text-slate-500 mt-1">Defina uma nova senha para o acesso de supervisor.</p>
+              <div className="mx-auto w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mb-4"><Lock className="w-6 h-6 text-slate-600" /></div>
+              <h3 className="text-lg font-bold text-slate-800">Alterar Senha</h3>
             </div>
-
             <form onSubmit={handlePasswordSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1 ml-1">Nova Senha</label>
-                <input
-                  type="password"
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
-                  value={newPassword}
-                  onChange={(e) => {
-                    setNewPassword(e.target.value);
-                    setPasswordError('');
-                  }}
-                  onKeyDown={(e) => setCapsLockOn(e.getModifierState('CapsLock'))}
-                  placeholder="Nova senha..."
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1 ml-1">Confirmar Senha</label>
-                <input
-                  type="password"
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
-                  value={confirmPassword}
-                  onChange={(e) => {
-                    setConfirmPassword(e.target.value);
-                    setPasswordError('');
-                  }}
-                  onKeyDown={(e) => setCapsLockOn(e.getModifierState('CapsLock'))}
-                  placeholder="Confirme a senha..."
-                />
-              </div>
-              
-              {capsLockOn && (
-                  <p className="text-xs text-amber-600 font-medium flex items-center gap-1 ml-1">
-                      <AlertTriangle className="w-3 h-3" /> Caps Lock ativado
-                  </p>
-              )}
-
-              {passwordError && (
-                <p className="text-xs text-red-500 font-medium ml-1">{passwordError}</p>
-              )}
-
-              <div className="pt-2">
-                <button
-                  type="submit"
-                  className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium shadow-sm transition-colors"
-                >
-                  Salvar Nova Senha
-                </button>
-              </div>
+              <input type="password" required className="w-full px-4 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Nova senha (min 4)..." />
+              <input type="password" required className="w-full px-4 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Confirme a senha..." />
+              {passwordError && <p className="text-xs text-red-500 font-medium">{passwordError}</p>}
+              <button type="submit" className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-bold transition-colors">Salvar Alterações</button>
             </form>
           </div>
         </div>
