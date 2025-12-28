@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { MaterialRequest, RequestStatus, Rig, Employee, RequestItem } from '../types';
-import { CheckCircle2, XCircle, Clock, AlertCircle, FileSpreadsheet, Inbox, Settings, X, Lock, AlertTriangle, Trash2, Undo2, Pencil, Save, CheckSquare, Square } from 'lucide-react';
+import { CheckCircle2, XCircle, Clock, AlertCircle, FileSpreadsheet, Inbox, Settings, X, Lock, AlertTriangle, Trash2, Undo2, Pencil, Save, CheckSquare, Square, Cloud, RefreshCw } from 'lucide-react';
 
 interface SupervisorDashboardProps {
   requests: MaterialRequest[];
@@ -10,16 +10,22 @@ interface SupervisorDashboardProps {
   rigs: Rig[];
   employees: Employee[];
   onChangePassword: (newPassword: string) => void;
+  // Sync Props
+  syncId: string;
+  onSyncIdChange: (id: string) => void;
+  onPerformSync: (isPush: boolean) => void;
+  isSyncing: boolean;
 }
 
 export const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({ 
-  requests, onUpdateStatus, onUpdateItems, onDeleteRequest, rigs, employees, onChangePassword 
+  requests, onUpdateStatus, onUpdateItems, onDeleteRequest, rigs, employees, onChangePassword,
+  syncId, onSyncIdChange, onPerformSync, isSyncing
 }) => {
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordError, setPasswordError] = useState('');
-  const [capsLockOn, setCapsLockOn] = useState(false);
   
   // Tabs for History/Trash
   const [activeHistoryTab, setActiveHistoryTab] = useState<'approved' | 'rejected'>('approved');
@@ -164,13 +170,30 @@ export const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
   return (
     <div className="space-y-8">
       {/* Top Controls */}
-      <div className="flex justify-end gap-2">
+      <div className="flex justify-between items-center bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
+         <div className="flex items-center gap-3">
+             <div className={`p-2 rounded-full ${syncId ? 'bg-green-50 text-green-600' : 'bg-slate-50 text-slate-400'}`}>
+                 <Cloud className="w-5 h-5" />
+             </div>
+             <div>
+                 <p className="text-xs text-slate-500 font-medium">Status da Nuvem</p>
+                 <p className="text-sm font-bold text-slate-800">
+                     {syncId ? `Conectado: ${syncId}` : 'Modo Local (Desconectado)'}
+                 </p>
+             </div>
+             <button 
+                onClick={() => setIsSyncModalOpen(true)}
+                className="ml-2 text-xs text-blue-600 hover:underline font-bold"
+             >
+                 Configurar Sincronização
+             </button>
+         </div>
          <button
             onClick={() => setIsPasswordModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-sm font-medium transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-medium transition-colors"
           >
             <Settings className="w-4 h-4" />
-            Alterar Senha
+            Minha Senha
           </button>
       </div>
 
@@ -442,6 +465,54 @@ export const SupervisorDashboard: React.FC<SupervisorDashboardProps> = ({
           </div>
         )}
       </div>
+
+      {/* Sync Configuration Modal */}
+      {isSyncModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 relative">
+            <button onClick={() => setIsSyncModalOpen(false)} className="absolute right-4 top-4 text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
+            <div className="mb-6">
+              <div className="mx-auto w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-4"><Cloud className="w-6 h-6 text-blue-600" /></div>
+              <h3 className="text-lg font-bold text-slate-800 text-center">Configurar Sincronização</h3>
+              <p className="text-sm text-slate-500 text-center mt-2 px-4">
+                Digite uma chave única para conectar este dispositivo a outros que usem a mesma chave.
+              </p>
+            </div>
+            <div className="space-y-4">
+              <div>
+                  <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Chave da Empresa / Grupo</label>
+                  <input 
+                    type="text" 
+                    className="w-full px-4 py-2.5 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 font-mono text-center uppercase" 
+                    value={syncId} 
+                    onChange={(e) => onSyncIdChange(e.target.value.toUpperCase().replace(/\s/g, '-'))} 
+                    placeholder="EX: MINHA-SONDA-ALPHA" 
+                  />
+              </div>
+              <div className="bg-amber-50 border border-amber-100 p-3 rounded-lg flex gap-2">
+                  <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0" />
+                  <p className="text-[10px] text-amber-800 leading-tight">
+                      <b>Atenção:</b> Alterar a chave fará com que este dispositivo baixe dados de um novo grupo. Certifique-se de que outros dispositivos usem exatamente a mesma chave.
+                  </p>
+              </div>
+              <button 
+                onClick={() => { onPerformSync(true); alert('Sincronização forçada iniciada!'); }}
+                disabled={!syncId || isSyncing}
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-bold transition-colors disabled:opacity-50"
+              >
+                {isSyncing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                Forçar Sincronização Agora
+              </button>
+              <button 
+                onClick={() => setIsSyncModalOpen(false)}
+                className="w-full py-2.5 text-slate-500 font-medium hover:text-slate-800"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Password Change Modal */}
       {isPasswordModalOpen && (

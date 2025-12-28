@@ -175,10 +175,51 @@ const App: React.FC = () => {
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 py-8">
         {currentView === 'form' && <RequestForm onSubmit={handleCreateRequest} rigs={rigs} employees={employees} materials={materials} />}
-        {currentView === 'dashboard' && authenticatedSupervisorId && <SupervisorDashboard requests={requests.filter(req => req.supervisorId === authenticatedSupervisorId)} onUpdateStatus={handleUpdateStatus} onUpdateItems={handleUpdateItems} onDeleteRequest={(id) => setRequests(requests.filter(r => r.id !== id))} rigs={rigs} employees={employees} onChangePassword={(p) => setEmployees(employees.map(e => e.id === authenticatedSupervisorId ? {...e, password: p} : e))} />}
-        {currentView === 'admin' && currentAdmin && <AdminDashboard currentAdmin={currentAdmin} materials={materials} employees={employees} rigs={rigs} admins={admins} roles={roles} requests={requests} onAddMaterial={(m) => setMaterials([...materials, m])} onUpdateMaterial={(s, m) => setMaterials(materials.map(x => x.sku === s ? m : x))} onDeleteMaterial={(s) => setMaterials(materials.filter(m => m.sku !== s))} onAddEmployee={(e) => setEmployees([...employees, e])} onUpdateEmployee={(id, e) => setEmployees(employees.map(x => x.id === id ? e : x))} onDeleteEmployee={(id) => setEmployees(employees.filter(e => e.id !== id))} onAddRig={(r) => setRigs([...rigs, r])} onUpdateRig={(id, r) => setRigs(rigs.map(x => x.id === id ? r : x))} onDeleteRig={(id) => setRigs(rigs.filter(r => r.id !== id))} onAddAdmin={(a) => setAdmins([...admins, a])} onUpdateAdmin={(id, a) => { setAdmins(admins.map(x => x.id === id ? a : x)); return true; }} onDeleteAdmin={(id) => setAdmins(admins.filter(a => a.id !== id))} onAddRole={(r) => setRoles([...roles, r])} onDeleteRole={(r) => setRoles(roles.filter(x => x !== r))} onImportDatabase={handleImportDatabase} />}
-        
-        {/* Admin Cloud Sync Tab Integration happens inside AdminDashboard if view is admin */}
+        {currentView === 'dashboard' && authenticatedSupervisorId && (
+          <SupervisorDashboard 
+            requests={requests.filter(req => req.supervisorId === authenticatedSupervisorId)} 
+            onUpdateStatus={handleUpdateStatus} 
+            onUpdateItems={handleUpdateItems} 
+            onDeleteRequest={(id) => setRequests(requests.filter(r => r.id !== id))} 
+            rigs={rigs} 
+            employees={employees} 
+            onChangePassword={(p) => setEmployees(employees.map(e => e.id === authenticatedSupervisorId ? {...e, password: p} : e))}
+            syncId={syncId}
+            onSyncIdChange={(id) => setSyncId(id)}
+            onPerformSync={performCloudSync}
+            isSyncing={isSyncing}
+          />
+        )}
+        {currentView === 'admin' && currentAdmin && (
+          <AdminDashboard 
+            currentAdmin={currentAdmin} 
+            materials={materials} 
+            employees={employees} 
+            rigs={rigs} 
+            admins={admins} 
+            roles={roles} 
+            requests={requests} 
+            onAddMaterial={(m) => setMaterials([...materials, m])} 
+            onUpdateMaterial={(s, m) => setMaterials(materials.map(x => x.sku === s ? m : x))} 
+            onDeleteMaterial={(s) => setMaterials(materials.filter(m => m.sku !== s))} 
+            onAddEmployee={(e) => setEmployees([...employees, e])} 
+            onUpdateEmployee={(id, e) => setEmployees(employees.map(x => x.id === id ? e : x))} 
+            onDeleteEmployee={(id) => setEmployees(employees.filter(e => e.id !== id))} 
+            onAddRig={(r) => setRigs([...rigs, r])} 
+            onUpdateRig={(id, r) => setRigs(rigs.map(x => x.id === id ? r : x))} 
+            onDeleteRig={(id) => setRigs(rigs.filter(r => r.id !== id))} 
+            onAddAdmin={(a) => setAdmins([...admins, a])} 
+            onUpdateAdmin={(id, a) => { setAdmins(admins.map(x => x.id === id ? a : x)); return true; }} 
+            onDeleteAdmin={(id) => setAdmins(admins.filter(a => a.id !== id))} 
+            onAddRole={(r) => setRoles([...roles, r])} 
+            onDeleteRole={(r) => setRoles(roles.filter(x => x !== r))} 
+            onImportDatabase={handleImportDatabase}
+            syncId={syncId}
+            onSyncIdChange={(id) => setSyncId(id)}
+            onPerformSync={performCloudSync}
+            isSyncing={isSyncing}
+          />
+        )}
       </main>
 
       {showLoginModal && (
@@ -201,41 +242,6 @@ const App: React.FC = () => {
               </div>
             </form>
           </div>
-        </div>
-      )}
-
-      {/* Cloud Sync Settings - Embedded in Admin View via a hidden trick or updated AdminDashboard */}
-      {currentView === 'admin' && currentAdmin?.role === 'MASTER' && (
-        <div className="max-w-7xl mx-auto px-4 pb-8">
-            <div className="bg-white border border-slate-200 rounded-lg p-6 shadow-sm">
-                <h3 className="text-md font-bold text-slate-800 flex items-center gap-2 mb-4">
-                    <Cloud className="w-5 h-5 text-blue-500" />
-                    Sincronização em Nuvem (Multi-Dispositivo)
-                </h3>
-                <div className="flex flex-col md:flex-row gap-4 items-end">
-                    <div className="flex-1">
-                        <label className="block text-xs font-medium text-slate-500 mb-1">ID do Grupo / Chave da Empresa</label>
-                        <input 
-                            type="text" 
-                            className="w-full px-4 py-2 border border-slate-300 rounded-md font-mono"
-                            placeholder="Ex: RECV-SONDAS-2024"
-                            value={syncId}
-                            onChange={(e) => setSyncId(e.target.value.toUpperCase().replace(/\s/g, '-'))}
-                        />
-                    </div>
-                    <button 
-                        onClick={() => performCloudSync(true)}
-                        disabled={!syncId || isSyncing}
-                        className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium disabled:opacity-50 flex items-center gap-2"
-                    >
-                        {isSyncing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-                        Forçar Envio para Nuvem
-                    </button>
-                </div>
-                <p className="mt-2 text-[10px] text-slate-400">
-                    * Todos os dispositivos usando a mesma chave compartilharão a mesma lista de solicitações e materiais em tempo real.
-                </p>
-            </div>
         </div>
       )}
 
