@@ -267,6 +267,7 @@ const App: React.FC = () => {
                 materials={materials}
                 currentUser={authenticatedSolicitor || undefined}
                 syncId={syncId}
+                onSyncIdChange={setSyncId}
                 onPerformSync={performCloudSync}
                 isSyncing={isSyncing}
               />

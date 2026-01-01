@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Material, RequestItem, Rig, Employee } from '../types';
-import { Plus, Trash2, Search, Package, User, MapPin, Sparkles, Loader2, ChevronDown, Check, Cloud, RefreshCw, UserCheck } from 'lucide-react';
+import { Plus, Trash2, Search, Package, User, MapPin, Sparkles, Loader2, ChevronDown, Check, Cloud, RefreshCw, UserCheck, Settings, X, AlertTriangle } from 'lucide-react';
 import { findMaterialWithAI } from '../services/aiService';
 
 interface RequestFormProps {
@@ -11,18 +11,22 @@ interface RequestFormProps {
   materials: Material[];
   currentUser?: Employee;
   syncId: string;
+  onSyncIdChange: (id: string) => void;
   onPerformSync: (isPush: boolean) => void;
   isSyncing: boolean;
 }
 
 export const RequestForm: React.FC<RequestFormProps> = ({ 
   onSubmit, rigs, employees, materials, currentUser, 
-  syncId, onPerformSync, isSyncing 
+  syncId, onSyncIdChange, onPerformSync, isSyncing 
 }) => {
   const [selectedRig, setSelectedRig] = useState<Rig | null>(null);
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(currentUser || null);
   const [selectedSupervisor, setSelectedSupervisor] = useState<Employee | null>(null);
   
+  // UI States
+  const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
+
   // Search States for Dropdowns
   const [rigSearch, setRigSearch] = useState('');
   const [isRigOpen, setIsRigOpen] = useState(false);
@@ -155,18 +159,28 @@ export const RequestForm: React.FC<RequestFormProps> = ({
 
         <div className="flex items-center gap-4">
           <div className="text-right hidden sm:block">
-             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">Sincronização</p>
-             <p className="text-xs font-mono font-bold text-blue-600">{syncId}</p>
+             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">Chave da Nuvem</p>
+             <p className="text-xs font-mono font-bold text-blue-600">{syncId || 'Local'}</p>
           </div>
-          <button 
-            onClick={() => { onPerformSync(false); alert('Base de dados sincronizada com sucesso!'); }}
-            disabled={isSyncing}
-            className="flex items-center gap-2 px-4 py-2 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-lg border border-slate-200 transition-all active:scale-95 disabled:opacity-50"
-            title="Atualizar dados da nuvem"
-          >
-            {isSyncing ? <RefreshCw className="w-4 h-4 animate-spin text-blue-500" /> : <Cloud className="w-4 h-4" />}
-            <span className="text-sm font-medium">Sincronizar</span>
-          </button>
+          
+          <div className="flex gap-2">
+            <button 
+                onClick={() => setIsConfigModalOpen(true)}
+                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+                title="Configurar Chave"
+            >
+                <Settings className="w-5 h-5" />
+            </button>
+            <button 
+                onClick={() => { onPerformSync(false); alert('Base de dados sincronizada com sucesso!'); }}
+                disabled={isSyncing || !syncId}
+                className="flex items-center gap-2 px-4 py-2 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-lg border border-slate-200 transition-all active:scale-95 disabled:opacity-50"
+                title="Atualizar dados da nuvem"
+            >
+                {isSyncing ? <RefreshCw className="w-4 h-4 animate-spin text-blue-500" /> : <Cloud className="w-4 h-4" />}
+                <span className="text-sm font-medium">Sincronizar</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -470,6 +484,54 @@ export const RequestForm: React.FC<RequestFormProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Sync Configuration Modal - Accessible to Any User */}
+      {isConfigModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 relative">
+            <button onClick={() => setIsConfigModalOpen(false)} className="absolute right-4 top-4 text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
+            <div className="mb-6">
+              <div className="mx-auto w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-4"><Cloud className="w-6 h-6 text-blue-600" /></div>
+              <h3 className="text-lg font-bold text-slate-800 text-center">Configurar Nuvem</h3>
+              <p className="text-sm text-slate-500 text-center mt-2 px-4">
+                Digite a chave única para conectar-se ao banco de dados da sua sonda/unidade.
+              </p>
+            </div>
+            <div className="space-y-4">
+              <div>
+                  <label className="block text-xs font-bold text-slate-400 uppercase mb-1 ml-1">Chave da Unidade / Grupo</label>
+                  <input 
+                    type="text" 
+                    className="w-full px-4 py-3 border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-mono text-center uppercase" 
+                    value={syncId} 
+                    onChange={(e) => onSyncIdChange(e.target.value.toUpperCase().replace(/\s/g, '-'))} 
+                    placeholder="EX: SONDA-ALPHA-01" 
+                  />
+              </div>
+              <div className="bg-blue-50 border border-blue-100 p-3 rounded-lg flex gap-2">
+                  <AlertTriangle className="w-5 h-5 text-blue-600 shrink-0" />
+                  <p className="text-[10px] text-blue-800 leading-tight">
+                      <b>Nota:</b> Use a mesma chave em todos os tablets e computadores para que todos vejam as mesmas solicitações e materiais.
+                  </p>
+              </div>
+              <button 
+                onClick={() => { onPerformSync(false); alert('Dados atualizados com a nuvem!'); setIsConfigModalOpen(false); }}
+                disabled={!syncId || isSyncing}
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-bold shadow-lg shadow-blue-100 transition-all disabled:opacity-50"
+              >
+                {isSyncing ? <RefreshCw className="w-5 h-5 animate-spin" /> : <RefreshCw className="w-5 h-5" />}
+                Sincronizar Agora
+              </button>
+              <button 
+                onClick={() => setIsConfigModalOpen(false)}
+                className="w-full py-2.5 text-slate-500 font-medium hover:text-slate-800 text-sm"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
