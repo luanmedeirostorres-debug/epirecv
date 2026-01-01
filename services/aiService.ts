@@ -1,21 +1,13 @@
+
 import { GoogleGenAI, Type } from "@google/genai";
 import { Material } from '../types';
-
-const getAiClient = () => {
-  const apiKey = process.env.API_KEY;
-  if (!apiKey) {
-    console.warn("API Key not found. AI features will be disabled.");
-    return null;
-  }
-  return new GoogleGenAI({ apiKey });
-};
 
 export const findMaterialWithAI = async (
   query: string,
   materials: Material[]
 ): Promise<{ sku: string; reasoning: string } | null> => {
-  const ai = getAiClient();
-  if (!ai) return null;
+  // Always initialize with the latest API key right before the call to ensure validity
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
   try {
     const materialList = materials.map(m => `${m.sku}: ${m.description}`).join('\n');
@@ -50,10 +42,12 @@ export const findMaterialWithAI = async (
             sku: { type: Type.STRING },
             reasoning: { type: Type.STRING },
           },
+          required: ["sku", "reasoning"]
         }
       }
     });
 
+    // Access .text property directly as per Gemini API documentation (do not call as method)
     const text = response.text;
     if (!text) return null;
     
