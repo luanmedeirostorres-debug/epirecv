@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Material, RequestItem, Rig, Employee } from '../types';
-import { Plus, Trash2, Search, Package, User, MapPin, Sparkles, Loader2, ChevronDown, Check, Cloud, RefreshCw } from 'lucide-react';
+import { Plus, Trash2, Search, Package, User, MapPin, Sparkles, Loader2, ChevronDown, Check, Cloud, RefreshCw, UserCheck } from 'lucide-react';
 import { findMaterialWithAI } from '../services/aiService';
 
 interface RequestFormProps {
@@ -30,6 +30,9 @@ export const RequestForm: React.FC<RequestFormProps> = ({
   const [employeeSearch, setEmployeeSearch] = useState(currentUser ? currentUser.name : '');
   const [isEmployeeOpen, setIsEmployeeOpen] = useState(false);
 
+  const [supervisorSearch, setSupervisorSearch] = useState('');
+  const [isSupervisorOpen, setIsSupervisorOpen] = useState(false);
+
   // Cart State
   const [cartItems, setCartItems] = useState<RequestItem[]>([]);
   
@@ -54,6 +57,10 @@ export const RequestForm: React.FC<RequestFormProps> = ({
   );
   
   const supervisors = employees.filter(e => e.role.toUpperCase().includes('SUPERVISOR'));
+  
+  const filteredSupervisors = supervisors.filter(s =>
+    s.name.toLowerCase().includes(supervisorSearch.toLowerCase())
+  );
 
   const handleSelectRig = (rig: Rig) => {
     setSelectedRig(rig);
@@ -65,6 +72,12 @@ export const RequestForm: React.FC<RequestFormProps> = ({
     setSelectedEmployee(emp);
     setEmployeeSearch(emp.name);
     setIsEmployeeOpen(false);
+  };
+
+  const handleSelectSupervisor = (sup: Employee) => {
+    setSelectedSupervisor(sup);
+    setSupervisorSearch(sup.name);
+    setIsSupervisorOpen(false);
   };
 
   const handleAddItem = () => {
@@ -89,6 +102,7 @@ export const RequestForm: React.FC<RequestFormProps> = ({
       setCartItems([]);
       setSelectedRig(null);
       setSelectedSupervisor(null);
+      setSupervisorSearch('');
       if (!currentUser) {
         setSelectedEmployee(null);
         setEmployeeSearch('');
@@ -277,20 +291,59 @@ export const RequestForm: React.FC<RequestFormProps> = ({
             </div>
           </div>
 
+          {/* Searchable Supervisor */}
           <div className="relative">
             <label className="block text-sm font-medium text-slate-700 mb-2">
               Supervisor de Turno <span className="text-red-500">*</span>
             </label>
-            <select 
-                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 transition-all appearance-none cursor-pointer text-sm"
-                value={selectedSupervisor?.id || ''}
-                onChange={(e) => setSelectedSupervisor(supervisors.find(s => s.id === e.target.value) || null)}
-            >
-                <option value="">Selecione o supervisor...</option>
-                {supervisors.map((sup) => (
-                    <option key={sup.id} value={sup.id}>{sup.name}</option>
-                ))}
-            </select>
+            <div className="relative">
+              <div 
+                className={`flex items-center w-full bg-slate-50 border rounded-lg focus-within:ring-2 focus-within:ring-blue-500 transition-all cursor-text ${selectedSupervisor ? 'border-indigo-500 bg-indigo-50/10' : 'border-slate-300'}`}
+                onClick={() => setIsSupervisorOpen(true)}
+              >
+                <UserCheck className={`w-5 h-5 ml-3 flex-shrink-0 ${selectedSupervisor ? 'text-indigo-600' : 'text-slate-400'}`} />
+                <input
+                  type="text"
+                  className="w-full pl-2 pr-8 py-2.5 bg-transparent outline-none text-slate-900 placeholder-slate-400 text-sm"
+                  placeholder="Buscar supervisor..."
+                  value={supervisorSearch}
+                  onChange={(e) => {
+                    setSupervisorSearch(e.target.value);
+                    setIsSupervisorOpen(true);
+                    if (selectedSupervisor && e.target.value !== selectedSupervisor.name) setSelectedSupervisor(null);
+                  }}
+                  onFocus={() => setIsSupervisorOpen(true)}
+                />
+                <div className="absolute right-2 flex items-center">
+                  <ChevronDown className={`w-4 h-4 transition-transform ${isSupervisorOpen ? 'rotate-180' : ''}`} />
+                </div>
+              </div>
+
+              {isSupervisorOpen && (
+                <>
+                  <div className="fixed inset-0 z-10" onClick={() => setIsSupervisorOpen(false)} />
+                  <div className="absolute z-20 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-xl max-h-60 overflow-y-auto">
+                    {filteredSupervisors.length > 0 ? (
+                      filteredSupervisors.map((sup) => (
+                        <button
+                          key={sup.id}
+                          className="w-full text-left px-4 py-3 hover:bg-slate-50 border-b border-slate-50 last:border-0 flex justify-between items-center group"
+                          onClick={() => handleSelectSupervisor(sup)}
+                        >
+                          <div>
+                            <p className="font-medium text-slate-800 group-hover:text-blue-700">{sup.name}</p>
+                            <p className="text-[10px] text-slate-500 uppercase tracking-wide">{sup.role}</p>
+                          </div>
+                          {selectedSupervisor?.id === sup.id && <Check className="w-4 h-4 text-blue-600" />}
+                        </button>
+                      ))
+                    ) : (
+                      <div className="px-4 py-3 text-sm text-slate-400 text-center">Nenhum supervisor encontrado.</div>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </div>
 
