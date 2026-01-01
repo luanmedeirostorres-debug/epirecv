@@ -171,6 +171,12 @@ export const EMPLOYEES: Employee[] = [
   // Mantendo supervisores técnicos e acessos de sistema previamente configurados
   { id: 'SUP001', name: 'Supervisor Geral Mossoró', role: 'Supervisor', password: 'prrecv' },
   { id: 'SUP002', name: 'Supervisor Geral Pendências', role: 'Supervisor', password: 'prrecv' },
+  
+  // Supervisores Fictícios adicionados para acesso por NOME
+  { id: 'S100', name: 'Carlos Oliveira', role: 'Supervisor', password: 'prrecv' },
+  { id: 'S101', name: 'Mariana Souza', role: 'Supervisor', password: 'prrecv' },
+  { id: 'S102', name: 'Ricardo Silva', role: 'Supervisor', password: 'prrecv' },
+  { id: 'S103', name: 'Ana Lucia', role: 'Supervisor', password: 'prrecv' },
 ];
 
 export const ADMINS: Admin[] = [

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Material, RequestItem, Rig, Employee } from '../types';
 import { Plus, Trash2, Search, Package, User, MapPin, Sparkles, Loader2, ChevronDown, Check, Cloud, RefreshCw } from 'lucide-react';
@@ -9,7 +8,7 @@ interface RequestFormProps {
   rigs: Rig[];
   employees: Employee[];
   materials: Material[];
-  currentUser: Employee;
+  currentUser?: Employee;
   syncId: string;
   onPerformSync: (isPush: boolean) => void;
   isSyncing: boolean;
@@ -20,6 +19,7 @@ export const RequestForm: React.FC<RequestFormProps> = ({
   syncId, onPerformSync, isSyncing 
 }) => {
   const [selectedRig, setSelectedRig] = useState<Rig | null>(null);
+  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(currentUser || null);
   const [selectedSupervisor, setSelectedSupervisor] = useState<Employee | null>(null);
   
   // Search States for Dropdowns
@@ -44,6 +44,7 @@ export const RequestForm: React.FC<RequestFormProps> = ({
   );
   
   const supervisors = employees.filter(e => e.role === 'Supervisor');
+  const availableEmployees = employees.filter(e => e.role !== 'Supervisor');
 
   const handleSelectRig = (rig: Rig) => {
     setSelectedRig(rig);
@@ -68,11 +69,12 @@ export const RequestForm: React.FC<RequestFormProps> = ({
   };
 
   const handleSubmit = () => {
-    if (selectedRig && selectedSupervisor && cartItems.length > 0) {
-      onSubmit(selectedRig.id, currentUser.id, selectedSupervisor.id, cartItems);
+    if (selectedRig && selectedSupervisor && selectedEmployee && cartItems.length > 0) {
+      onSubmit(selectedRig.id, selectedEmployee.id, selectedSupervisor.id, cartItems);
       setCartItems([]);
       setSelectedRig(null);
       setSelectedSupervisor(null);
+      if (!currentUser) setSelectedEmployee(null);
       setRigSearch('');
     }
   };
@@ -105,15 +107,17 @@ export const RequestForm: React.FC<RequestFormProps> = ({
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-500">
       
-      {/* User Info & Sync Status Bar */}
+      {/* Header & Sync Status Bar */}
       <div className="flex flex-col md:flex-row justify-between items-center bg-white p-4 rounded-xl border border-slate-200 shadow-sm gap-4">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center">
-            <User className="w-5 h-5" />
+            {currentUser ? <User className="w-5 h-5" /> : <Package className="w-5 h-5" />}
           </div>
           <div>
-            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">Solicitante Conectado</p>
-            <p className="text-sm font-bold text-slate-800">{currentUser.name} <span className="text-slate-400 font-normal">({currentUser.id})</span></p>
+            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">Status do Formulário</p>
+            <p className="text-sm font-bold text-slate-800">
+                {currentUser ? `${currentUser.name} (Logado)` : 'Aberto para Solicitações'}
+            </p>
           </div>
         </div>
 
@@ -140,8 +144,26 @@ export const RequestForm: React.FC<RequestFormProps> = ({
           Preencher Nova Solicitação
         </h2>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           
+          {/* Employee Selection */}
+          <div className="relative">
+            <label className="block text-sm font-medium text-slate-700 mb-2">
+              Solicitante (Colaborador) <span className="text-red-500">*</span>
+            </label>
+            <select 
+                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 transition-all appearance-none cursor-pointer"
+                value={selectedEmployee?.id || ''}
+                onChange={(e) => setSelectedEmployee(employees.find(emp => emp.id === e.target.value) || null)}
+                disabled={!!currentUser}
+            >
+                <option value="">Selecione quem solicita...</option>
+                {employees.map((emp) => (
+                    <option key={emp.id} value={emp.id}>{emp.name} ({emp.id})</option>
+                ))}
+            </select>
+          </div>
+
           {/* Rig Searchable Dropdown */}
           <div className="relative">
             <label className="block text-sm font-medium text-slate-700 mb-2">
@@ -197,22 +219,20 @@ export const RequestForm: React.FC<RequestFormProps> = ({
             </div>
           </div>
 
-          <div className="md:col-span-1 relative">
+          <div className="relative">
             <label className="block text-sm font-medium text-slate-700 mb-2">
               Supervisor de Turno <span className="text-red-500">*</span>
             </label>
-            <div className="grid grid-cols-1">
-              <select 
+            <select 
                 className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 transition-all appearance-none cursor-pointer"
                 value={selectedSupervisor?.id || ''}
                 onChange={(e) => setSelectedSupervisor(supervisors.find(s => s.id === e.target.value) || null)}
-              >
+            >
                 <option value="">Selecione o supervisor...</option>
                 {supervisors.map((sup) => (
-                  <option key={sup.id} value={sup.id}>{sup.name}</option>
+                    <option key={sup.id} value={sup.id}>{sup.name}</option>
                 ))}
-              </select>
-            </div>
+            </select>
           </div>
         </div>
 
@@ -332,7 +352,7 @@ export const RequestForm: React.FC<RequestFormProps> = ({
         <div className="mt-8 flex justify-end">
           <button
             onClick={handleSubmit}
-            disabled={!selectedRig || !selectedSupervisor || cartItems.length === 0}
+            disabled={!selectedRig || !selectedSupervisor || !selectedEmployee || cartItems.length === 0}
             className="px-8 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl font-bold shadow-lg shadow-green-100 disabled:opacity-50 transition-all active:scale-95"
           >
             Finalizar e Enviar

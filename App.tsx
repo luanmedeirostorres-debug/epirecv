@@ -35,6 +35,26 @@ const App: React.FC = () => {
   const [passwordInput, setPasswordInput] = useState('');
   const [loginError, setLoginError] = useState(false);
 
+  // Security Effect: Logout when leaving a protected tab
+  useEffect(() => {
+    // When switching views, we clear the authentication of the tabs that are not currently active
+    // This ensures "ask for authentication again" when returning.
+    if (currentView !== 'dashboard') {
+      setAuthenticatedSupervisorId(null);
+    }
+    if (currentView !== 'admin') {
+      setCurrentAdmin(null);
+    }
+    if (currentView !== 'form') {
+      setAuthenticatedSolicitor(null);
+    }
+
+    // Always clear the form inputs when moving between tabs for security
+    setLoginUser('');
+    setPasswordInput('');
+    setLoginError(false);
+  }, [currentView]);
+
   // Persistence Effects
   useEffect(() => {
     localStorage.setItem('sondalog_rigs', JSON.stringify(rigs));
@@ -112,7 +132,6 @@ const App: React.FC = () => {
 
     if (currentView === 'form') {
       const emp = employees.find(e => e.id === loginUser);
-      // Senha padrão 'sondas' como solicitado
       const validPass = emp?.password || 'sondas';
       if (emp && passwordInput === validPass) {
         setAuthenticatedSolicitor(emp);
@@ -122,10 +141,11 @@ const App: React.FC = () => {
         setLoginError(true);
       }
     } else if (currentView === 'dashboard') {
-      const supervisor = employees.find(e => e.id === loginUser && e.role === 'Supervisor');
+      // Requisito: Acesso por NOME para o Supervisor
+      const supervisor = employees.find(e => e.name.toLowerCase() === loginUser.toLowerCase() && e.role === 'Supervisor');
       const validPass = supervisor?.password || 'prrecv'; 
       if (supervisor && passwordInput === validPass) {
-        setAuthenticatedSupervisorId(loginUser);
+        setAuthenticatedSupervisorId(supervisor.id);
         setLoginUser('');
         setPasswordInput('');
       } else setLoginError(true);
@@ -156,9 +176,8 @@ const App: React.FC = () => {
     alert('Base de dados atualizada!');
   };
 
-  // Requisito: solicitar login e senha para aba solicitação
-  const needsLogin = (currentView === 'form' && !authenticatedSolicitor) ||
-                   (currentView === 'dashboard' && !authenticatedSupervisorId) || 
+  // Login is required for dashboard and admin
+  const needsLogin = (currentView === 'dashboard' && !authenticatedSupervisorId) || 
                    (currentView === 'admin' && !currentAdmin);
 
   return (
@@ -195,22 +214,25 @@ const App: React.FC = () => {
                    <KeyRound className="w-8 h-8" />
                 </div>
                 <h1 className="text-2xl font-bold text-slate-800">
-                  {currentView === 'form' ? 'Acesso ao Solicitante' : 
-                   currentView === 'dashboard' ? 'Acesso ao Supervisor' : 'Acesso ao Administrador'}
+                  {currentView === 'dashboard' ? 'Acesso ao Supervisor' : 'Acesso ao Administrador'}
                 </h1>
-                <p className="text-slate-500 text-sm mt-2">Identifique-se com sua matrícula e senha</p>
+                <p className="text-slate-500 text-sm mt-2">
+                  {currentView === 'dashboard' ? 'Digite seu Nome Completo e Senha' : 'Identifique-se com sua matrícula e senha'}
+                </p>
               </div>
 
               <form onSubmit={handleLoginSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-400 uppercase mb-1 ml-1">Usuário / Matrícula</label>
+                  <label className="block text-xs font-bold text-slate-400 uppercase mb-1 ml-1">
+                    {currentView === 'dashboard' ? 'Nome do Supervisor' : 'Usuário / Matrícula'}
+                  </label>
                   <div className="relative">
                     <input 
                       type="text" 
                       className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" 
                       value={loginUser} 
                       onChange={(e) => setLoginUser(e.target.value)} 
-                      placeholder="Ex: MAT001" 
+                      placeholder={currentView === 'dashboard' ? "Ex: Carlos Oliveira" : "Ex: MAT001"} 
                       required 
                     />
                     <User className="w-5 h-5 text-slate-400 absolute left-3 top-3" />
@@ -245,13 +267,13 @@ const App: React.FC = () => {
           </div>
         ) : (
           <>
-            {currentView === 'form' && authenticatedSolicitor && (
+            {currentView === 'form' && (
               <RequestForm 
                 onSubmit={handleCreateRequest} 
                 rigs={rigs} 
                 employees={employees} 
                 materials={materials}
-                currentUser={authenticatedSolicitor}
+                currentUser={authenticatedSolicitor || undefined}
                 syncId={syncId}
                 onPerformSync={performCloudSync}
                 isSyncing={isSyncing}
