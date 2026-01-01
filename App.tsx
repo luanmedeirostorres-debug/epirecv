@@ -37,8 +37,8 @@ const App: React.FC = () => {
 
   // Security Effect: Logout when leaving a protected tab
   useEffect(() => {
-    // When switching views, we clear the authentication of the tabs that are not currently active
-    // This ensures "ask for authentication again" when returning.
+    // Quando troca de visão, limpamos as autenticações das abas que não estão ativas
+    // Isso garante que peça autenticação novamente ao retornar.
     if (currentView !== 'dashboard') {
       setAuthenticatedSupervisorId(null);
     }
@@ -49,7 +49,7 @@ const App: React.FC = () => {
       setAuthenticatedSolicitor(null);
     }
 
-    // Always clear the form inputs when moving between tabs for security
+    // Sempre limpa os campos de input ao trocar de aba por segurança
     setLoginUser('');
     setPasswordInput('');
     setLoginError(false);
@@ -143,6 +143,7 @@ const App: React.FC = () => {
     } else if (currentView === 'dashboard') {
       // Requisito: Acesso por NOME para o Supervisor
       const supervisor = employees.find(e => e.name.toLowerCase() === loginUser.toLowerCase() && e.role === 'Supervisor');
+      // Senha padrão ou definida
       const validPass = supervisor?.password || 'prrecv'; 
       if (supervisor && passwordInput === validPass) {
         setAuthenticatedSupervisorId(supervisor.id);
