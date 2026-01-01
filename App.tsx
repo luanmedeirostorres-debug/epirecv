@@ -13,7 +13,7 @@ type ViewState = 'form' | 'dashboard' | 'admin';
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<ViewState>('form');
 
-  // Sync State - Default to SONDAS-PR as requested
+  // Sync State - Default to SONDAS-PR
   const [syncId, setSyncId] = useState<string>(() => localStorage.getItem('sondalog_sync_id') || 'SONDAS-PR');
   const [isSyncing, setIsSyncing] = useState(false);
 
@@ -35,21 +35,12 @@ const App: React.FC = () => {
   const [passwordInput, setPasswordInput] = useState('');
   const [loginError, setLoginError] = useState(false);
 
-  // Security Effect: Logout when leaving a protected tab
+  // Security Effect: Clear auth when changing tabs (Force re-authentication)
   useEffect(() => {
-    // Quando troca de visão, limpamos as autenticações das abas que não estão ativas
-    // Isso garante que peça autenticação novamente ao retornar.
-    if (currentView !== 'dashboard') {
-      setAuthenticatedSupervisorId(null);
-    }
-    if (currentView !== 'admin') {
-      setCurrentAdmin(null);
-    }
-    if (currentView !== 'form') {
-      setAuthenticatedSolicitor(null);
-    }
+    if (currentView !== 'dashboard') setAuthenticatedSupervisorId(null);
+    if (currentView !== 'admin') setCurrentAdmin(null);
+    if (currentView !== 'form') setAuthenticatedSolicitor(null);
 
-    // Sempre limpa os campos de input ao trocar de aba por segurança
     setLoginUser('');
     setPasswordInput('');
     setLoginError(false);
@@ -137,13 +128,14 @@ const App: React.FC = () => {
         setAuthenticatedSolicitor(emp);
         setLoginUser('');
         setPasswordInput('');
-      } else {
-        setLoginError(true);
-      }
+      } else setLoginError(true);
     } else if (currentView === 'dashboard') {
-      // Requisito: Acesso por NOME para o Supervisor
-      const supervisor = employees.find(e => e.name.toLowerCase() === loginUser.toLowerCase() && e.role === 'Supervisor');
-      // Senha padrão ou definida
+      // Requisito: Acesso por NOME para qualquer cargo de SUPERVISOR
+      const supervisor = employees.find(e => 
+        e.name.toLowerCase() === loginUser.toLowerCase() && 
+        e.role.toUpperCase().includes('SUPERVISOR')
+      );
+      
       const validPass = supervisor?.password || 'prrecv'; 
       if (supervisor && passwordInput === validPass) {
         setAuthenticatedSupervisorId(supervisor.id);
@@ -177,7 +169,6 @@ const App: React.FC = () => {
     alert('Base de dados atualizada!');
   };
 
-  // Login is required for dashboard and admin
   const needsLogin = (currentView === 'dashboard' && !authenticatedSupervisorId) || 
                    (currentView === 'admin' && !currentAdmin);
 
@@ -233,7 +224,7 @@ const App: React.FC = () => {
                       className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" 
                       value={loginUser} 
                       onChange={(e) => setLoginUser(e.target.value)} 
-                      placeholder={currentView === 'dashboard' ? "Ex: Carlos Oliveira" : "Ex: MAT001"} 
+                      placeholder={currentView === 'dashboard' ? "Ex: Carlos Oliveira" : "Ex: 1168"} 
                       required 
                     />
                     <User className="w-5 h-5 text-slate-400 absolute left-3 top-3" />

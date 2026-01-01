@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Material, Employee, Rig, Admin, MaterialRequest } from '../types';
 import { Database, UserPlus, HardHat, PackagePlus, Save, UserCog, Shield, AlertTriangle, Settings, Pencil, Trash2, X, Plus, Briefcase, Download, Upload, RefreshCcw, Cloud, RefreshCw } from 'lucide-react';
@@ -645,12 +646,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             </div>
         )}
 
-        {/* ... Rest of AdminDashboard tabs ... */}
+        {/* Employees Tab */}
         {activeTab === 'employees' && (
           <>
             <form onSubmit={handleEmployeeSubmit} className="space-y-4 mb-8">
               <h3 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
-                <Database className="w-5 h-5 text-slate-500" />
+                <UserPlus className="w-5 h-5 text-slate-500" />
                 {editingId ? 'Editar Colaborador' : 'Cadastrar Colaborador (Geral)'}
                 <CancelEditButton />
               </h3>
@@ -660,7 +661,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   <input
                     required
                     type="text"
-                    placeholder="Ex: MAT999"
+                    placeholder="Ex: 1168"
                     className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 outline-none"
                     value={employeeForm.id}
                     onChange={e => setEmployeeForm({...employeeForm, id: e.target.value})}
@@ -707,36 +708,268 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 )}
               </div>
             </form>
-            {/* ... table for employees ... */}
+
+            <div className="border-t border-slate-100 pt-6">
+                <h4 className="font-medium text-slate-700 mb-4">Colaboradores Cadastrados ({employees.length})</h4>
+                <div className="overflow-x-auto">
+                    <table className="min-w-full text-sm text-left">
+                        <thead className="bg-slate-50 text-slate-500 font-medium">
+                            <tr>
+                                <th className="px-4 py-2">Matrícula</th>
+                                <th className="px-4 py-2">Nome</th>
+                                <th className="px-4 py-2">Cargo</th>
+                                <th className="px-4 py-2 text-right">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                            {employees.map(e => (
+                                <tr key={e.id} className="hover:bg-slate-50">
+                                    <td className="px-4 py-2 font-mono text-slate-600">{e.id}</td>
+                                    <td className="px-4 py-2">{e.name}</td>
+                                    <td className="px-4 py-2 text-slate-500">{e.role}</td>
+                                    <td className="px-4 py-2 text-right space-x-2">
+                                        <button onClick={() => handleEditEmployee(e)} className="text-blue-600 hover:text-blue-800" title="Editar">
+                                            <Pencil className="w-4 h-4 inline" />
+                                        </button>
+                                        {isMaster && (
+                                            <button 
+                                                onClick={() => { if(confirm('Tem certeza que deseja excluir?')) onDeleteEmployee(e.id) }} 
+                                                className="text-red-600 hover:text-red-800" 
+                                                title="Excluir"
+                                            >
+                                                <Trash2 className="w-4 h-4 inline" />
+                                            </button>
+                                        )}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
           </>
         )}
         
         {/* supervisor form tab remains same but simplified in this snippet */}
         {activeTab === 'supervisors' && isMaster && (
-           <form onSubmit={handleSupervisorSubmit} className="space-y-4 mb-8">
-              <h3 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
-                <UserCog className="w-5 h-5 text-slate-500" />
-                {editingId ? 'Editar Supervisor' : 'Cadastrar Novo Supervisor'}
-                <CancelEditButton />
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Matrícula</label>
-                  <input required type="text" className="w-full px-3 py-2 border border-slate-300 rounded-md" value={supervisorForm.id} onChange={e => setSupervisorForm({...supervisorForm, id: e.target.value})} disabled={!!editingId} />
+          <>
+            <form onSubmit={handleSupervisorSubmit} className="space-y-4 mb-8">
+                <h3 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
+                  <UserCog className="w-5 h-5 text-slate-500" />
+                  {editingId ? 'Editar Supervisor' : 'Cadastrar Novo Supervisor'}
+                  <CancelEditButton />
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Matrícula</label>
+                    <input required type="text" className="w-full px-3 py-2 border border-slate-300 rounded-md" value={supervisorForm.id} onChange={e => setSupervisorForm({...supervisorForm, id: e.target.value})} disabled={!!editingId} />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Nome Completo</label>
+                    <input required type="text" className="w-full px-3 py-2 border border-slate-300 rounded-md" value={supervisorForm.name} onChange={e => setSupervisorForm({...supervisorForm, name: e.target.value})} />
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Nome Completo</label>
-                  <input required type="text" className="w-full px-3 py-2 border border-slate-300 rounded-md" value={supervisorForm.name} onChange={e => setSupervisorForm({...supervisorForm, name: e.target.value})} />
+                <button type="submit" className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-md">Salvar</button>
+            </form>
+
+            <div className="border-t border-slate-100 pt-6">
+                <h4 className="font-medium text-slate-700 mb-4">Supervisores Cadastrados ({employees.filter(e => e.role.toUpperCase().includes('SUPERVISOR')).length})</h4>
+                <div className="overflow-x-auto">
+                    <table className="min-w-full text-sm text-left">
+                        <thead className="bg-slate-50 text-slate-500 font-medium">
+                            <tr>
+                                <th className="px-4 py-2">Matrícula</th>
+                                <th className="px-4 py-2">Nome</th>
+                                <th className="px-4 py-2">Cargo Específico</th>
+                                <th className="px-4 py-2 text-right">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                            {employees.filter(e => e.role.toUpperCase().includes('SUPERVISOR')).map(e => (
+                                <tr key={e.id} className="hover:bg-slate-50">
+                                    <td className="px-4 py-2 font-mono text-slate-600">{e.id}</td>
+                                    <td className="px-4 py-2">{e.name}</td>
+                                    <td className="px-4 py-2 text-slate-500">{e.role}</td>
+                                    <td className="px-4 py-2 text-right space-x-2">
+                                        <button onClick={() => handleEditSupervisor(e)} className="text-blue-600 hover:text-blue-800" title="Editar">
+                                            <Pencil className="w-4 h-4 inline" />
+                                        </button>
+                                        {isMaster && (
+                                            <button 
+                                                onClick={() => { if(confirm('Tem certeza que deseja excluir?')) onDeleteEmployee(e.id) }} 
+                                                className="text-red-600 hover:text-red-800" 
+                                                title="Excluir"
+                                            >
+                                                <Trash2 className="w-4 h-4 inline" />
+                                            </button>
+                                        )}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
                 </div>
-              </div>
-              <button type="submit" className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-md">Salvar</button>
-           </form>
+            </div>
+          </>
+        )}
+
+        {activeTab === 'rigs' && isMaster && (
+           <>
+            <form onSubmit={handleRigSubmit} className="space-y-4 mb-8">
+                <h3 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
+                  <HardHat className="w-5 h-5 text-slate-500" />
+                  {editingId ? 'Editar Sonda' : 'Cadastrar Nova Sonda'}
+                  <CancelEditButton />
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">ID da Sonda</label>
+                    <input required type="text" placeholder="Ex: S01" className="w-full px-3 py-2 border border-slate-300 rounded-md" value={rigForm.id} onChange={e => setRigForm({...rigForm, id: e.target.value})} disabled={!!editingId} />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Nome da Sonda</label>
+                    <input required type="text" placeholder="Ex: Sonda Alpha 01" className="w-full px-3 py-2 border border-slate-300 rounded-md" value={rigForm.name} onChange={e => setRigForm({...rigForm, name: e.target.value})} />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Localização</label>
+                    <input required type="text" placeholder="Ex: Bacia de Campos" className="w-full px-3 py-2 border border-slate-300 rounded-md" value={rigForm.location} onChange={e => setRigForm({...rigForm, location: e.target.value})} />
+                  </div>
+                </div>
+                <button type="submit" className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-md">Salvar</button>
+            </form>
+            <div className="border-t border-slate-100 pt-6">
+                <h4 className="font-medium text-slate-700 mb-4">Sondas Cadastradas ({rigs.length})</h4>
+                <div className="overflow-x-auto">
+                    <table className="min-w-full text-sm text-left">
+                        <thead className="bg-slate-50 text-slate-500 font-medium">
+                            <tr>
+                                <th className="px-4 py-2">ID</th>
+                                <th className="px-4 py-2">Nome</th>
+                                <th className="px-4 py-2">Localização</th>
+                                <th className="px-4 py-2 text-right">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                            {rigs.map(r => (
+                                <tr key={r.id} className="hover:bg-slate-50">
+                                    <td className="px-4 py-2 font-mono text-slate-600">{r.id}</td>
+                                    <td className="px-4 py-2 font-semibold">{r.name}</td>
+                                    <td className="px-4 py-2 text-slate-500">{r.location}</td>
+                                    <td className="px-4 py-2 text-right space-x-2">
+                                        <button onClick={() => handleEditRig(r)} className="text-blue-600 hover:text-blue-800" title="Editar">
+                                            <Pencil className="w-4 h-4 inline" />
+                                        </button>
+                                        <button onClick={() => { if(confirm('Excluir sonda?')) onDeleteRig(r.id) }} className="text-red-600 hover:text-red-800" title="Excluir">
+                                            <Trash2 className="w-4 h-4 inline" />
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+           </>
+        )}
+
+        {activeTab === 'roles' && isMaster && (
+            <>
+                <form onSubmit={handleAddRoleSubmit} className="flex gap-2 mb-6">
+                    <input required type="text" placeholder="Novo cargo..." className="flex-1 px-3 py-2 border rounded-md" value={newRole} onChange={e => setNewRole(e.target.value)} />
+                    <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-md flex items-center gap-2">
+                        <Plus className="w-4 h-4" /> Adicionar Cargo
+                    </button>
+                </form>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                    {roles.map(role => (
+                        <div key={role} className="flex justify-between items-center p-3 bg-slate-50 border rounded-lg">
+                            <span className="text-sm font-medium">{role}</span>
+                            <button onClick={() => { if(confirm('Excluir este cargo?')) onDeleteRole(role) }} className="text-red-400 hover:text-red-600">
+                                <Trash2 className="w-4 h-4" />
+                            </button>
+                        </div>
+                    ))}
+                </div>
+            </>
+        )}
+
+        {activeTab === 'admins' && isMaster && (
+            <>
+                <form onSubmit={handleAdminSubmit} className="space-y-4 mb-8">
+                    <h3 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
+                        <Shield className="w-5 h-5 text-slate-500" />
+                        {editingId ? 'Editar Administrador' : 'Cadastrar Novo Administrador'}
+                        <CancelEditButton />
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Usuário (Login)</label>
+                            <input required type="text" className="w-full px-3 py-2 border rounded-md" value={adminForm.id} onChange={e => setAdminForm({...adminForm, id: e.target.value})} disabled={!!editingId} />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Nome Completo</label>
+                            <input required type="text" className="w-full px-3 py-2 border rounded-md" value={adminForm.name} onChange={e => setAdminForm({...adminForm, name: e.target.value})} />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Nível de Acesso</label>
+                            <select className="w-full px-3 py-2 border rounded-md" value={adminForm.role} onChange={e => setAdminForm({...adminForm, role: e.target.value as any})}>
+                                <option value="COMMON">Comum (Almoxarife)</option>
+                                <option value="MASTER">Master (Controle Total)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">{editingId ? 'Senha (Em branco p/ manter)' : 'Senha'}</label>
+                            <input type="password" required={!editingId} className="w-full px-3 py-2 border rounded-md" value={adminForm.password || ''} onChange={e => setAdminForm({...adminForm, password: e.target.value})} />
+                        </div>
+                    </div>
+                    <button type="submit" className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-md">Salvar</button>
+                </form>
+                <div className="border-t pt-6">
+                    <h4 className="font-medium mb-4 text-slate-700">Administradores Sistema</h4>
+                    <div className="grid gap-4">
+                        {admins.map(a => (
+                            <div key={a.id} className="flex justify-between items-center p-4 border rounded-lg hover:shadow-sm transition-shadow">
+                                <div>
+                                    <p className="font-bold">{a.name} <span className="text-xs font-normal text-slate-400">@{a.id}</span></p>
+                                    <p className="text-xs uppercase font-bold text-blue-600">{a.role}</p>
+                                </div>
+                                <div className="flex gap-2">
+                                    <button onClick={() => handleEditAdmin(a)} className="p-2 text-slate-400 hover:text-blue-600"><Pencil className="w-4 h-4" /></button>
+                                    <button onClick={() => { if(confirm('Excluir administrador?')) onDeleteAdmin(a.id) }} className="p-2 text-slate-400 hover:text-red-600"><Trash2 className="w-4 h-4" /></button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </>
         )}
 
         {activeTab === 'backup' && isMaster && (
-            <div className="flex gap-4">
-                <button onClick={handleExportBackup} className="px-6 py-2 bg-blue-600 text-white rounded-md">Exportar Backup</button>
-                <button onClick={handleResetMaterials} className="px-6 py-2 bg-amber-600 text-white rounded-md">Resetar Materiais</button>
+            <div className="space-y-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="p-6 border rounded-xl bg-slate-50">
+                        <h4 className="font-bold text-slate-800 mb-2 flex items-center gap-2">
+                            <Download className="w-5 h-5" /> Exportar Dados
+                        </h4>
+                        <p className="text-sm text-slate-500 mb-4">Baixe um arquivo JSON contendo todos os materiais, colaboradores, sondas e solicitações atuais.</p>
+                        <button onClick={handleExportBackup} className="w-full py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition-colors">Baixar JSON</button>
+                    </div>
+                    <div className="p-6 border rounded-xl bg-slate-50">
+                        <h4 className="font-bold text-slate-800 mb-2 flex items-center gap-2">
+                            <Upload className="w-5 h-5" /> Importar Backup
+                        </h4>
+                        <p className="text-sm text-slate-500 mb-4">Restaure o sistema a partir de um arquivo JSON. Isso apagará todos os dados atuais permanentemente.</p>
+                        <input type="file" ref={fileInputRef} className="hidden" accept=".json" onChange={handleFileChange} />
+                        <button onClick={handleImportClick} className="w-full py-2 bg-slate-800 text-white rounded-lg font-bold hover:bg-slate-900 transition-colors">Carregar Arquivo</button>
+                    </div>
+                </div>
+                <div className="p-6 border border-amber-100 rounded-xl bg-amber-50">
+                    <h4 className="font-bold text-amber-800 mb-2 flex items-center gap-2">
+                        <RefreshCcw className="w-5 h-5" /> Resetar Banco de Dados
+                    </h4>
+                    <p className="text-sm text-amber-700 mb-4">Restaura apenas a lista de materiais padrão (EPIs iniciais). Colaboradores e sondas não serão afetados.</p>
+                    <button onClick={handleResetMaterials} className="px-6 py-2 bg-amber-600 text-white rounded-lg font-bold hover:bg-amber-700 transition-colors">Resetar Materiais</button>
+                </div>
             </div>
         )}
 
@@ -744,19 +977,28 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           <form onSubmit={handleSelfUpdateSubmit} className="space-y-4">
             <h3 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
               <Settings className="w-5 h-5 text-slate-500" />
-              Configurações da Conta
+              Configurações da Minha Conta
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Usuário</label>
-                <input required type="text" className="w-full px-3 py-2 border rounded-md" value={selfForm.id} onChange={e => setSelfForm({...selfForm, id: e.target.value})} />
+                <label className="block text-sm font-medium text-slate-700 mb-1">Nome de Exibição</label>
+                <input required type="text" className="w-full px-3 py-2 border rounded-md" value={selfForm.name} onChange={e => setSelfForm({...selfForm, name: e.target.value})} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">ID / Usuário</label>
+                <input required type="text" className="w-full px-3 py-2 border rounded-md bg-slate-50" value={selfForm.id} disabled />
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Nova Senha</label>
-                <input type="password" placeholder="Em branco p/ manter" className="w-full px-3 py-2 border rounded-md" value={selfForm.password || ''} onChange={e => setSelfForm({...selfForm, password: e.target.value})} />
+                <input type="password" placeholder="Mínimo 4 caracteres" className="w-full px-3 py-2 border rounded-md" value={selfForm.password || ''} onChange={e => setSelfForm({...selfForm, password: e.target.value})} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Confirmar Nova Senha</label>
+                <input type="password" placeholder="Digite novamente" className="w-full px-3 py-2 border rounded-md" value={confirmSelfPass} onChange={e => setConfirmSelfPass(e.target.value)} />
               </div>
             </div>
-            <button type="submit" className="mt-4 px-6 py-2 bg-slate-800 text-white rounded-md">Atualizar Dados</button>
+            <p className="text-[10px] text-slate-400 italic">* Deixe os campos de senha em branco se desejar manter a senha atual.</p>
+            <button type="submit" className="mt-4 px-6 py-2 bg-slate-800 text-white rounded-md font-bold shadow-md hover:bg-slate-900 transition-colors">Atualizar Meus Dados</button>
           </form>
         )}
       </div>

@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { Material, RequestItem, Rig, Employee } from '../types';
 import { Plus, Trash2, Search, Package, User, MapPin, Sparkles, Loader2, ChevronDown, Check, Cloud, RefreshCw } from 'lucide-react';
 import { findMaterialWithAI } from '../services/aiService';
@@ -26,6 +27,9 @@ export const RequestForm: React.FC<RequestFormProps> = ({
   const [rigSearch, setRigSearch] = useState('');
   const [isRigOpen, setIsRigOpen] = useState(false);
 
+  const [employeeSearch, setEmployeeSearch] = useState(currentUser ? currentUser.name : '');
+  const [isEmployeeOpen, setIsEmployeeOpen] = useState(false);
+
   // Cart State
   const [cartItems, setCartItems] = useState<RequestItem[]>([]);
   
@@ -38,18 +42,29 @@ export const RequestForm: React.FC<RequestFormProps> = ({
   const [isSearchingAI, setIsSearchingAI] = useState(false);
   const [aiReasoning, setAiReasoning] = useState<string | null>(null);
 
+  // Filter Logic
   const filteredRigs = rigs.filter(r => 
     r.name.toLowerCase().includes(rigSearch.toLowerCase()) || 
     r.id.toLowerCase().includes(rigSearch.toLowerCase())
   );
+
+  const filteredEmployees = employees.filter(e => 
+    e.name.toLowerCase().includes(employeeSearch.toLowerCase()) || 
+    e.id.toLowerCase().includes(employeeSearch.toLowerCase())
+  );
   
-  const supervisors = employees.filter(e => e.role === 'Supervisor');
-  const availableEmployees = employees.filter(e => e.role !== 'Supervisor');
+  const supervisors = employees.filter(e => e.role.toUpperCase().includes('SUPERVISOR'));
 
   const handleSelectRig = (rig: Rig) => {
     setSelectedRig(rig);
     setRigSearch(rig.name);
     setIsRigOpen(false);
+  };
+
+  const handleSelectEmployee = (emp: Employee) => {
+    setSelectedEmployee(emp);
+    setEmployeeSearch(emp.name);
+    setIsEmployeeOpen(false);
   };
 
   const handleAddItem = () => {
@@ -74,7 +89,10 @@ export const RequestForm: React.FC<RequestFormProps> = ({
       setCartItems([]);
       setSelectedRig(null);
       setSelectedSupervisor(null);
-      if (!currentUser) setSelectedEmployee(null);
+      if (!currentUser) {
+        setSelectedEmployee(null);
+        setEmployeeSearch('');
+      }
       setRigSearch('');
     }
   };
@@ -146,22 +164,62 @@ export const RequestForm: React.FC<RequestFormProps> = ({
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           
-          {/* Employee Selection */}
+          {/* Searchable Solicitor (Employee) */}
           <div className="relative">
             <label className="block text-sm font-medium text-slate-700 mb-2">
-              Solicitante (Colaborador) <span className="text-red-500">*</span>
+              Solicitante (Matrícula ou Nome) <span className="text-red-500">*</span>
             </label>
-            <select 
-                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 transition-all appearance-none cursor-pointer"
-                value={selectedEmployee?.id || ''}
-                onChange={(e) => setSelectedEmployee(employees.find(emp => emp.id === e.target.value) || null)}
-                disabled={!!currentUser}
-            >
-                <option value="">Selecione quem solicita...</option>
-                {employees.map((emp) => (
-                    <option key={emp.id} value={emp.id}>{emp.name} ({emp.id})</option>
-                ))}
-            </select>
+            <div className="relative">
+              <div 
+                className={`flex items-center w-full bg-slate-50 border rounded-lg focus-within:ring-2 focus-within:ring-blue-500 transition-all cursor-text ${selectedEmployee ? 'border-blue-500 bg-blue-50/10' : 'border-slate-300'} ${currentUser ? 'opacity-70 cursor-not-allowed' : ''}`}
+                onClick={() => !currentUser && setIsEmployeeOpen(true)}
+              >
+                <User className={`w-5 h-5 ml-3 flex-shrink-0 ${selectedEmployee ? 'text-blue-600' : 'text-slate-400'}`} />
+                <input
+                  type="text"
+                  readOnly={!!currentUser}
+                  className="w-full pl-2 pr-8 py-2.5 bg-transparent outline-none text-slate-900 placeholder-slate-400 text-sm"
+                  placeholder="Nome ou Matrícula..."
+                  value={employeeSearch}
+                  onChange={(e) => {
+                    setEmployeeSearch(e.target.value);
+                    setIsEmployeeOpen(true);
+                    if (selectedEmployee && e.target.value !== selectedEmployee.name) setSelectedEmployee(null);
+                  }}
+                  onFocus={() => !currentUser && setIsEmployeeOpen(true)}
+                />
+                {!currentUser && (
+                  <div className="absolute right-2 flex items-center">
+                    <ChevronDown className={`w-4 h-4 transition-transform ${isEmployeeOpen ? 'rotate-180' : ''}`} />
+                  </div>
+                )}
+              </div>
+
+              {isEmployeeOpen && !currentUser && (
+                <>
+                  <div className="fixed inset-0 z-10" onClick={() => setIsEmployeeOpen(false)} />
+                  <div className="absolute z-20 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-xl max-h-60 overflow-y-auto">
+                    {filteredEmployees.length > 0 ? (
+                      filteredEmployees.slice(0, 50).map((emp) => (
+                        <button
+                          key={emp.id}
+                          className="w-full text-left px-4 py-3 hover:bg-slate-50 border-b border-slate-50 last:border-0 flex justify-between items-center group"
+                          onClick={() => handleSelectEmployee(emp)}
+                        >
+                          <div className="truncate pr-2">
+                            <p className="font-medium text-slate-800 group-hover:text-blue-700 truncate">{emp.name}</p>
+                            <p className="text-[10px] text-slate-500 uppercase tracking-wide">Matrícula: {emp.id} • {emp.role}</p>
+                          </div>
+                          {selectedEmployee?.id === emp.id && <Check className="w-4 h-4 text-blue-600 flex-shrink-0" />}
+                        </button>
+                      ))
+                    ) : (
+                      <div className="px-4 py-3 text-sm text-slate-400 text-center">Colaborador não encontrado.</div>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
           </div>
 
           {/* Rig Searchable Dropdown */}
@@ -177,7 +235,7 @@ export const RequestForm: React.FC<RequestFormProps> = ({
                 <MapPin className={`w-5 h-5 ml-3 flex-shrink-0 ${selectedRig ? 'text-green-600' : 'text-slate-400'}`} />
                 <input
                   type="text"
-                  className="w-full pl-2 pr-8 py-2.5 bg-transparent outline-none text-slate-900 placeholder-slate-400"
+                  className="w-full pl-2 pr-8 py-2.5 bg-transparent outline-none text-slate-900 placeholder-slate-400 text-sm"
                   placeholder="Qual a sonda?"
                   value={rigSearch}
                   onChange={(e) => {
@@ -224,7 +282,7 @@ export const RequestForm: React.FC<RequestFormProps> = ({
               Supervisor de Turno <span className="text-red-500">*</span>
             </label>
             <select 
-                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 transition-all appearance-none cursor-pointer"
+                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 transition-all appearance-none cursor-pointer text-sm"
                 value={selectedSupervisor?.id || ''}
                 onChange={(e) => setSelectedSupervisor(supervisors.find(s => s.id === e.target.value) || null)}
             >
